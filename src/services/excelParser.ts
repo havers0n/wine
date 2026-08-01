@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { formatDisplayDate } from '../lib/dateUtils';
-import { Task, TaskStatus } from '../types';
+import { PlanItem, PlanItemStatus } from '../types';
 
 type ExcelRow = Record<string, unknown>;
 
@@ -13,7 +13,7 @@ const REQUIRED_HEADERS = [
 ] as const;
 
 export interface ExcelParseResult {
-  tasks: Task[];
+  planItems: PlanItem[];
   droppedRows: number;
 }
 
@@ -65,7 +65,7 @@ function formatExcelDate(rawDate: unknown): string {
   return value;
 }
 
-function stableTaskId(parts: string[]): string {
+function stablePlanItemId(parts: string[]): string {
   const source = parts.join('|');
   let hash = 2166136261;
 
@@ -74,7 +74,7 @@ function stableTaskId(parts: string[]): string {
     hash = Math.imul(hash, 16777619);
   }
 
-  return `task-${(hash >>> 0).toString(36)}`;
+  return `plan-item-${(hash >>> 0).toString(36)}`;
 }
 
 function validateHeaders(rows: ExcelRow[]): void {
@@ -102,7 +102,7 @@ export function parseExcelWorkbook(buffer: ArrayBuffer): ExcelParseResult {
   if (rows.length === 0) throw new ExcelImportError('הקובץ ריק');
   validateHeaders(rows);
 
-  const tasks = rows.flatMap<Task>((row, index) => {
+  const planItems = rows.flatMap<PlanItem>((row, index) => {
     const date = formatExcelDate(row['תאריך']);
     const plotName = asText(row['שם חלקה']);
     if (!date || !plotName) return [];
@@ -111,7 +111,7 @@ export function parseExcelWorkbook(buffer: ArrayBuffer): ExcelParseResult {
     const team = asText(row['צוות דיגום']);
 
     return [{
-      id: stableTaskId([date, plotCode, plotName, team, String(index + 2)]),
+      id: stablePlanItemId([date, plotCode, plotName, team, String(index + 2)]),
       date,
       farm: asText(row['לקוח (מגדל)']),
       plotName,
@@ -122,20 +122,20 @@ export function parseExcelWorkbook(buffer: ArrayBuffer): ExcelParseResult {
       area: asText(row['שטח']),
       agronomist: asText(row['אגרונום']),
       team,
-      samplesCount: asText(row['מספר דגימות']),
-      note: asText(row['הערה']),
+      plannedSamples: asText(row['מספר דגימות']),
+      sector: asText(row['הערה']),
       sampleType: asText(row['סוג דגימה']),
       color: asText(row['צבע']),
-      status: TaskStatus.PLANNED,
+      status: team ? PlanItemStatus.ASSIGNED : PlanItemStatus.PLANNED,
     }];
   });
 
-  if (tasks.length === 0) {
+  if (planItems.length === 0) {
     throw new ExcelImportError('לא נמצאו שורות עם תאריך ושם חלקה תקינים');
   }
 
   return {
-    tasks,
-    droppedRows: rows.length - tasks.length,
+    planItems,
+    droppedRows: rows.length - planItems.length,
   };
 }

@@ -4,7 +4,7 @@
  */
 
 import { lazy, Suspense, useState } from 'react';
-import { TaskProvider } from './store/TaskContext';
+import { PlanningProvider } from './store/PlanningContext';
 import PlanPage from './pages/PlanPage';
 import WorkerPage from './pages/WorkerPage';
 import CreateTaskPage from './pages/CreateTaskPage';
@@ -17,7 +17,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'upload' | 'plan' | 'worker' | 'create'>('plan');
 
   return (
-    <TaskProvider>
+    <PlanningProvider>
       <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans" dir="rtl">
         {/* Top Navigation Bar */}
         <header className="h-14 bg-emerald-900 text-white flex items-center justify-between px-4 sm:px-6 shrink-0">
@@ -45,7 +45,7 @@ export default function App() {
                   activeTab === 'create' ? "bg-white text-emerald-900" : "text-white hover:bg-white/10"
                 )}
               >
-                יצירה ידנית
+                נקודה חדשה
               </button>
               <button
                 onClick={() => setActiveTab('upload')}
@@ -63,7 +63,7 @@ export default function App() {
                   activeTab === 'worker' ? "bg-white text-emerald-900" : "text-white hover:bg-white/10"
                 )}
               >
-                עובד
+                צוות
               </button>
             </div>
           </div>
@@ -92,6 +92,6 @@ export default function App() {
         
         {/* Mobile Navigation (Bottom bar) - simplified for mobile fallback if needed, but we integrated into top bar. Let's keep a small bar for mobile or just use top bar */}
       </div>
-    </TaskProvider>
+    </PlanningProvider>
   );
 }

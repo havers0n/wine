@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useTasks } from '../store/TaskContext';
-import { Task } from '../types';
+import { usePlanning } from '../store/PlanningContext';
+import { PlanItem } from '../types';
 import { Upload, AlertCircle, CheckCircle2, FileSpreadsheet } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ExcelImportError, parseExcelWorkbook } from '../services/excelParser';
@@ -8,9 +8,9 @@ import { ExcelImportError, parseExcelWorkbook } from '../services/excelParser';
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export default function UploadPage() {
-  const { tasks, mergeTasks, clearTasks } = useTasks();
+  const { planItems, mergePlanItems, clearPlanItems } = usePlanning();
   const [error, setError] = useState<string | null>(null);
-  const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
+  const [pendingPlanItems, setPendingPlanItems] = useState<PlanItem[]>([]);
   const [droppedRows, setDroppedRows] = useState(0);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,7 +34,7 @@ export default function UploadPage() {
       }
 
       const result = parseExcelWorkbook(await file.arrayBuffer());
-      setPendingTasks(result.tasks);
+      setPendingPlanItems(result.planItems);
       setDroppedRows(result.droppedRows);
     } catch (uploadError) {
       const message = uploadError instanceof ExcelImportError
@@ -48,13 +48,13 @@ export default function UploadPage() {
   };
 
   const confirmImport = () => {
-    mergeTasks(pendingTasks);
-    setPendingTasks([]);
+    mergePlanItems(pendingPlanItems);
+    setPendingPlanItems([]);
     setDroppedRows(0);
   };
 
   const cancelImport = () => {
-    setPendingTasks([]);
+    setPendingPlanItems([]);
     setDroppedRows(0);
   };
 
@@ -62,7 +62,7 @@ export default function UploadPage() {
     <div className="max-w-2xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="space-y-1">
         <h1 className="text-2xl font-black tracking-tight text-slate-900 text-right uppercase" dir="rtl">העלאת נתוני אקסל</h1>
-        <p className="text-slate-500 text-right text-xs font-bold uppercase" dir="rtl">ייבוא משימות דיגום לקואורדינטור</p>
+        <p className="text-slate-500 text-right text-xs font-bold uppercase" dir="rtl">ייבוא נקודות עבודה לתוכנית</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -96,23 +96,23 @@ export default function UploadPage() {
           </div>
         )}
 
-        {pendingTasks.length > 0 && (
+        {pendingPlanItems.length > 0 && (
           <div className="mt-6 bg-emerald-50 rounded-lg p-4 border border-emerald-100" dir="rtl">
             <div className="flex items-center gap-2 text-emerald-900 mb-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               <h3 className="font-bold text-sm uppercase">קובץ נקרא בהצלחה</h3>
             </div>
             <p className="text-emerald-800 mb-4 text-xs font-medium">
-              נמצאו {pendingTasks.length} משימות דיגום תקינות
+              נמצאו {pendingPlanItems.length} נקודות תכנון תקינות
             </p>
             {droppedRows > 0 && (
               <p className="text-amber-800 mb-4 text-xs font-medium">
                 {droppedRows} שורות ללא תאריך או שם חלקה לא ייובאו
               </p>
             )}
-            {tasks.length > 0 && (
+            {planItems.length > 0 && (
               <p className="text-emerald-800 mb-4 text-xs">
-                משימות קיימות עם אותו מזהה יעודכנו בלי למחוק את הסטטוס וההערות שלהן.
+                נקודות קיימות עם אותו מזהה יעודכנו בלי למחוק את מצב התכנון שלהן.
               </p>
             )}
             
@@ -134,16 +134,16 @@ export default function UploadPage() {
         )}
       </div>
       
-      {tasks.length > 0 && !pendingTasks.length && (
+      {planItems.length > 0 && !pendingPlanItems.length && (
         <div className="bg-slate-800 text-white p-4 rounded-xl flex items-center justify-between" dir="rtl">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-bold uppercase tracking-wide">יש כרגע {tasks.length} משימות פעילות במערכת.</span>
+            <span className="text-xs font-bold uppercase tracking-wide">יש כרגע {planItems.length} נקודות בתוכנית.</span>
           </div>
           <button
             onClick={() => {
               if (isConfirmingClear) {
-                clearTasks();
+                clearPlanItems();
                 setIsConfirmingClear(false);
               } else {
                 setIsConfirmingClear(true);
@@ -158,7 +158,7 @@ export default function UploadPage() {
             }}
             className={cn("text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded transition-colors", isConfirmingClear ? "bg-rose-500 text-white" : "text-slate-300 hover:text-white bg-white/10")}
           >
-            {isConfirmingClear ? 'לחץ שוב לאישור' : 'נקה משימות'}
+            {isConfirmingClear ? 'לחץ שוב לאישור' : 'נקה תוכנית'}
           </button>
         </div>
       )}

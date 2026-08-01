@@ -1,13 +1,18 @@
-export enum TaskStatus {
+export enum PlanItemStatus {
   PLANNED = 'מתוכנן',
-  ASSIGNED = 'שויך',
-  IN_PROGRESS = 'בעבודה',
-  DONE = 'בוצע',
-  IMPOSSIBLE = 'לא ניתן לביצוע',
-  NEEDS_CHECK = 'דורש בדיקה',
+  ASSIGNED = 'שויך לצוות',
+  DEFERRED = 'נדחה',
+  CANCELLED = 'בוטל',
 }
 
-export interface Task {
+export enum WorkPlanStatus {
+  DRAFT = 'טיוטה',
+  PUBLISHED = 'פורסם',
+  CLOSED = 'נסגר',
+  CANCELLED = 'בוטל',
+}
+
+export interface PlanItem {
   id: string;
   date: string; // תאריך
   farm: string; // לקוח (מגדל)
@@ -19,14 +24,19 @@ export interface Task {
   area: string; // שטח
   agronomist: string; // אגרונום
   team: string; // צוות דיגום
-  samplesCount: string; // מספר דגימות
-  note: string; // הערה
+  plannedSamples: string; // מספר דגימות מתוכנן
+  sector: string; // מגוף / אזור
   sampleType: string; // סוג דגימה
   color: string; // צבע
-  
-  // App specific state
-  status: TaskStatus;
-  workerComment?: string;
-  actualSamples?: string;
-  executionTime?: string;
+  coordinatorNote?: string;
+  status: PlanItemStatus;
+}
+
+export interface WorkPlan {
+  id: string;
+  name: string;
+  status: WorkPlanStatus;
+  itemIds: string[];
+  createdAt: string;
+  updatedAt: string;
 }

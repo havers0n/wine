@@ -1,25 +1,26 @@
 import React, { useState } from 'react';
-import { useTasks } from '../store/TaskContext';
-import { TaskStatus } from '../types';
+import { usePlanning } from '../store/PlanningContext';
+import { PlanItem, PlanItemStatus } from '../types';
 import { PlusCircle, Calendar as CalendarIcon, Map, Leaf, Users, CheckCircle2 } from 'lucide-react';
 
 export default function CreateTaskPage() {
-  const { tasks, setTasks } = useTasks();
+  const { planItems, setPlanItems } = usePlanning();
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
     date: '',
     farm: '',
     plotName: '',
     plotCode: '',
+    sector: '',
     vineyard: '',
     variety: '',
     plantingYear: '',
     area: '',
     team: '',
     agronomist: '',
-    samplesCount: '1',
+    plannedSamples: '1',
     sampleType: 'הבשלה',
-    note: ''
+    coordinatorNote: ''
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -40,8 +41,8 @@ export default function CreateTaskPage() {
       formattedDate = 'ללא תאריך';
     }
 
-    const newTask = {
-      id: `manual-${crypto.randomUUID()}`,
+    const newPlanItem: PlanItem = {
+      id: `manual-plan-item-${crypto.randomUUID()}`,
       date: formattedDate,
       farm: formData.farm,
       plotName: formData.plotName,
@@ -52,14 +53,15 @@ export default function CreateTaskPage() {
       area: formData.area,
       agronomist: formData.agronomist,
       team: formData.team,
-      samplesCount: formData.samplesCount,
-      note: formData.note,
+      plannedSamples: formData.plannedSamples,
+      sector: formData.sector,
+      coordinatorNote: formData.coordinatorNote.trim() || undefined,
       sampleType: formData.sampleType,
       color: '',
-      status: TaskStatus.PLANNED,
+      status: formData.team ? PlanItemStatus.ASSIGNED : PlanItemStatus.PLANNED,
     };
 
-    setTasks([...tasks, newTask]);
+    setPlanItems([...planItems, newPlanItem]);
     setSuccess(true);
     
     // Reset partial form (keep date, farm, team same to make it easy to add multiple)
@@ -67,11 +69,12 @@ export default function CreateTaskPage() {
       ...prev,
       plotName: '',
       plotCode: '',
+      sector: '',
       variety: '',
       plantingYear: '',
       area: '',
-      samplesCount: '1',
-      note: ''
+      plannedSamples: '1',
+      coordinatorNote: ''
     }));
 
     setTimeout(() => setSuccess(false), 3000);
@@ -80,14 +83,14 @@ export default function CreateTaskPage() {
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500" dir="rtl">
       <div className="space-y-1">
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 text-right uppercase">יצירת משימה חדשה</h1>
-        <p className="text-slate-500 text-right text-xs font-bold uppercase">הוספה ידנית של משימות למערכת במקום קובץ אקסל</p>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900 text-right uppercase">יצירת נקודת תכנון חדשה</h1>
+        <p className="text-slate-500 text-right text-xs font-bold uppercase">הוספה ידנית של נקודה לתוכנית העבודה</p>
       </div>
 
       {success && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-          <span className="font-bold text-sm">המשימה נוצרה בהצלחה ונוספה ללוח התכנון!</span>
+          <span className="font-bold text-sm">הנקודה נוספה בהצלחה לתוכנית העבודה!</span>
         </div>
       )}
 
@@ -104,6 +107,7 @@ export default function CreateTaskPage() {
               <input 
                 type="date" 
                 name="date"
+                required
                 value={formData.date}
                 onChange={handleChange}
                 className="w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
@@ -154,7 +158,7 @@ export default function CreateTaskPage() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">שם חלקה <span className="text-rose-500">*</span></label>
               <input 
@@ -175,6 +179,17 @@ export default function CreateTaskPage() {
                 required
                 placeholder="לדוגמה: 40253"
                 value={formData.plotCode}
+                onChange={handleChange}
+                className="w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">מגוף / אזור</label>
+              <input
+                type="text"
+                name="sector"
+                placeholder="לדוגמה: 399 דרום"
+                value={formData.sector}
                 onChange={handleChange}
                 className="w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               />
@@ -236,21 +251,21 @@ export default function CreateTaskPage() {
           </div>
         </div>
 
-        {/* Step 4: Task Details */}
+        {/* Step 4: Planning Details */}
         <div className="p-6">
           <div className="flex items-center gap-2 mb-4 text-emerald-700">
             <Users className="w-5 h-5" />
-            <h2 className="font-bold uppercase tracking-tight text-sm">4. פרטי דיגום</h2>
+            <h2 className="font-bold uppercase tracking-tight text-sm">4. פרטי תכנון</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">מספר דגימות <span className="text-rose-500">*</span></label>
               <input 
                 type="number" 
-                name="samplesCount"
+                name="plannedSamples"
                 min="1"
                 required
-                value={formData.samplesCount}
+                value={formData.plannedSamples}
                 onChange={handleChange}
                 className="w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               />
@@ -271,9 +286,9 @@ export default function CreateTaskPage() {
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">הערה לצוות</label>
             <textarea 
-              name="note"
+              name="coordinatorNote"
               placeholder="הערות מיוחדות לצוות הדיגום..."
-              value={formData.note}
+              value={formData.coordinatorNote}
               onChange={handleChange}
               rows={2}
               className="w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
@@ -287,7 +302,7 @@ export default function CreateTaskPage() {
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
           >
             <PlusCircle className="w-5 h-5" />
-            צור משימה
+            הוסף לתוכנית
           </button>
         </div>
       </form>
