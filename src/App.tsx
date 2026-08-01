@@ -115,7 +115,7 @@ function PlannerApp() {
           <span className="opacity-70">תכנון צוותי דיגום</span>
           <span className="opacity-50 border-r border-white/10 pr-4">v0.1.0</span>
         </div>
-        <div className="opacity-80">פותח באהבה ❤️ על ידי דניאל</div>
+        <div className="opacity-80">פותח ב❤️ על ידי דניאל</div>
       </footer>
     </div>
   );
