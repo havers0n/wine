@@ -31,18 +31,18 @@ MAGOF stores planning data in Supabase. It does not use browser storage as its o
 6. Sign in with the coordinator email. The first login creates the initial `MAGOF` workspace and work plan.
 7. Read the workspace ID from `public.workspaces`, set `VITE_MAGOF_WORKSPACE_ID`, and restart the app.
 
-To grant an existing Supabase Auth user read-only team access, run this in the SQL editor as an administrator:
+To grant an existing Supabase Auth user read-only access to one assigned team, run this in the SQL editor as an administrator:
 
 ```sql
-insert into public.workspace_members (workspace_id, user_id, role)
-select 1, id, 'team'
+insert into public.workspace_members (workspace_id, user_id, role, team_name)
+select 1, id, 'team', '1'
 from auth.users
 where email = 'team.member@example.com'
 on conflict (workspace_id, user_id)
-do update set role = excluded.role;
+do update set role = excluded.role, team_name = excluded.team_name;
 ```
 
-Replace `1` with the MAGOF workspace ID. Coordinators can read and change plans; team members can only read them. Access is enforced with Row Level Security.
+Replace the first `1` with the MAGOF workspace ID and the final `'1'` with the team name used in the imported plan. Coordinators can read and change plans; team members can only read their assigned team's published rows. Access is enforced with Row Level Security.
 
 ## Verification
 

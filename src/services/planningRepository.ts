@@ -8,6 +8,7 @@ export interface PlanningAccessContext {
   workspaceId: number;
   workspaceName: string;
   role: WorkspaceRole;
+  teamName: string | null;
   workPlanId: number;
   workPlanName: string;
   workPlanStatus: WorkPlanStatus;
@@ -130,7 +131,7 @@ async function resolveAccessContext(userId: string): Promise<PlanningAccessConte
   const defaultPlanName = 'תוכנית עבודה';
   let membershipQuery = supabase
     .from('workspace_members')
-    .select('workspace_id, role')
+    .select('workspace_id, role, team_name')
     .eq('user_id', userId)
     .order('joined_at', { ascending: true })
     .limit(1);
@@ -149,6 +150,7 @@ async function resolveAccessContext(userId: string): Promise<PlanningAccessConte
 
   let workspaceId = membership?.workspace_id;
   let role = membership ? assertRole(membership.role) : null;
+  let teamName = membership?.team_name?.trim() || null;
 
   if (!workspaceId) {
     const { data: ownedWorkspace, error: ownedWorkspaceError } = await supabase
@@ -197,6 +199,7 @@ async function resolveAccessContext(userId: string): Promise<PlanningAccessConte
       );
     if (membershipCreateError) throw new PlanningRepositoryError(membershipCreateError.message);
     role = 'coordinator';
+    teamName = null;
   }
 
   const { data: workspace, error: workspaceError } = await supabase
@@ -254,6 +257,7 @@ async function resolveAccessContext(userId: string): Promise<PlanningAccessConte
     workspaceId,
     workspaceName: workspace.name,
     role: role ?? 'team',
+    teamName,
     workPlanId: plan.id,
     workPlanName: plan.name,
     workPlanStatus: assertPlanStatus(plan.status),
@@ -280,10 +284,18 @@ export async function getPlanningAccessContext(): Promise<PlanningAccessContext>
 
 export async function listPlanItems(): Promise<PlanItem[]> {
   const context = await getPlanningAccessContext();
-  const { data, error } = await getSupabaseClient()
+  if (context.role === 'team' && !context.teamName) return [];
+
+  let query = getSupabaseClient()
     .from('plan_items')
     .select('*')
-    .eq('work_plan_id', context.workPlanId)
+    .eq('work_plan_id', context.workPlanId);
+
+  if (context.role === 'team') {
+    query = query.eq('team', context.teamName as string);
+  }
+
+  const { data, error } = await query
     .order('work_date', { ascending: true })
     .order('team', { ascending: true })
     .order('plot_code', { ascending: true });

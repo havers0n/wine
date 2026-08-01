@@ -32,16 +32,19 @@ export type Database = {
           workspace_id: number;
           user_id: string;
           role: string;
+          team_name: string | null;
           joined_at: string;
         };
         Insert: {
           workspace_id: number;
           user_id: string;
           role: string;
+          team_name?: string | null;
           joined_at?: string;
         };
         Update: {
           role?: string;
+          team_name?: string | null;
         };
         Relationships: [
           {

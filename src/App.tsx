@@ -79,7 +79,7 @@ function PlannerApp() {
                 <button type="button" onClick={() => setActiveTab('upload')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'upload' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>ייבוא</button>
               </>
             )}
-            <button type="button" onClick={() => setActiveTab('worker')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'worker' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>צוות</button>
+            <button type="button" onClick={() => setActiveTab('worker')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'worker' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>{canManage ? 'תצוגת צוות' : 'היום שלי'}</button>
           </nav>
 
           <button
