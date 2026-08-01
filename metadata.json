@@ -1,8 +1,6 @@
 {
   "name": "MAGOF",
-  "description": "Task management application for vineyard harvesting and sampling.",
+  "description": "Planning and team-assignment application for vineyard sampling work.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": []
 }
