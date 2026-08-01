@@ -4,7 +4,7 @@
  */
 
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Cloud, LayoutDashboard, LoaderCircle, LogOut, RefreshCw } from 'lucide-react';
+import { LoaderCircle, LogOut, RefreshCw } from 'lucide-react';
 import { AuthProvider, useAuth } from './store/AuthContext';
 import { PlanningProvider, usePlanning } from './store/PlanningContext';
 import AuthGate from './components/AuthGate';
@@ -19,7 +19,7 @@ type AppTab = 'upload' | 'plan' | 'worker' | 'create';
 function PlannerApp() {
   const [activeTab, setActiveTab] = useState<AppTab>('plan');
   const { user, signOut } = useAuth();
-  const { access, isLoading, isSaving, error, refreshPlanItems } = usePlanning();
+  const { access, isLoading, error, refreshPlanItems } = usePlanning();
   const canManage = access?.role === 'coordinator';
 
   useEffect(() => {
@@ -57,8 +57,12 @@ function PlannerApp() {
     <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans" dir="rtl">
       <header className="min-h-14 bg-emerald-900 text-white flex items-center justify-between px-3 sm:px-6 shrink-0 gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="hidden sm:flex w-8 h-8 bg-emerald-500 rounded items-center justify-center shrink-0">
-            <LayoutDashboard className="w-5 h-5" />
+          <div className="flex w-9 h-9 sm:w-10 sm:h-10 overflow-hidden rounded-lg bg-white shadow-sm shrink-0 items-center justify-center">
+            <img
+              src="/magof-logo.png"
+              alt="MAGOF"
+              className="w-full h-full object-cover scale-[2.05]"
+            />
           </div>
           <div className="min-w-0">
             <h1 className="text-sm sm:text-lg font-bold tracking-tight uppercase truncate">MAGOF <span className="font-normal opacity-70 hidden sm:inline">Planner</span></h1>
@@ -111,11 +115,7 @@ function PlannerApp() {
           <span className="opacity-70">תכנון צוותי דיגום</span>
           <span className="opacity-50 border-r border-white/10 pr-4">v0.1.0</span>
         </div>
-        <div className="flex items-center gap-2 opacity-70">
-          {isSaving ? <LoaderCircle className="w-3 h-3 animate-spin" /> : <Cloud className="w-3 h-3" />}
-          <span>{isSaving ? 'שומר ב-Supabase' : 'מסונכרן עם Supabase'}</span>
-          <span className="border-r border-white/10 pr-3">משלים ל-AKOLogic</span>
-        </div>
+        <div className="opacity-80">פותח באהבה ❤️ על ידי דניאל</div>
       </footer>
     </div>
   );
