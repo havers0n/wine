@@ -4,8 +4,9 @@ import { PlanItem, PlanItemStatus } from '../types';
 import { PlusCircle, Calendar as CalendarIcon, Map, Leaf, Users, CheckCircle2 } from 'lucide-react';
 
 export default function CreateTaskPage() {
-  const { planItems, setPlanItems } = usePlanning();
+  const { addPlanItem, isSaving } = usePlanning();
   const [success, setSuccess] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     date: '',
     farm: '',
@@ -27,8 +28,9 @@ export default function CreateTaskPage() {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmissionError(null);
     
     // Format date from YYYY-MM-DD to DD.MM.YYYY
     let formattedDate = formData.date;
@@ -61,8 +63,13 @@ export default function CreateTaskPage() {
       status: formData.team ? PlanItemStatus.ASSIGNED : PlanItemStatus.PLANNED,
     };
 
-    setPlanItems([...planItems, newPlanItem]);
-    setSuccess(true);
+    try {
+      await addPlanItem(newPlanItem);
+      setSuccess(true);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : 'שמירת הנקודה נכשלה');
+      return;
+    }
     
     // Reset partial form (keep date, farm, team same to make it easy to add multiple)
     setFormData(prev => ({
@@ -91,6 +98,12 @@ export default function CreateTaskPage() {
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
           <span className="font-bold text-sm">הנקודה נוספה בהצלחה לתוכנית העבודה!</span>
+        </div>
+      )}
+
+      {submissionError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-sm font-bold" dir="ltr">
+          {submissionError}
         </div>
       )}
 
@@ -299,10 +312,11 @@ export default function CreateTaskPage() {
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
           <button 
             type="submit"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
+            disabled={isSaving}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
           >
             <PlusCircle className="w-5 h-5" />
-            הוסף לתוכנית
+            {isSaving ? 'שומר…' : 'הוסף לתוכנית'}
           </button>
         </div>
       </form>

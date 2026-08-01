@@ -8,7 +8,7 @@ import { ExcelImportError, parseExcelWorkbook } from '../services/excelParser';
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export default function UploadPage() {
-  const { planItems, mergePlanItems, clearPlanItems } = usePlanning();
+  const { planItems, mergePlanItems, clearPlanItems, isSaving } = usePlanning();
   const [error, setError] = useState<string | null>(null);
   const [pendingPlanItems, setPendingPlanItems] = useState<PlanItem[]>([]);
   const [droppedRows, setDroppedRows] = useState(0);
@@ -47,10 +47,15 @@ export default function UploadPage() {
     }
   };
 
-  const confirmImport = () => {
-    mergePlanItems(pendingPlanItems);
-    setPendingPlanItems([]);
-    setDroppedRows(0);
+  const confirmImport = async () => {
+    setError(null);
+    try {
+      await mergePlanItems(pendingPlanItems);
+      setPendingPlanItems([]);
+      setDroppedRows(0);
+    } catch (importError) {
+      setError(importError instanceof Error ? importError.message : 'שמירת התוכנית ב-Supabase נכשלה');
+    }
   };
 
   const cancelImport = () => {
@@ -118,13 +123,15 @@ export default function UploadPage() {
             
             <div className="flex gap-2">
               <button
-                onClick={confirmImport}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded font-bold text-xs uppercase transition-colors flex-1"
+                onClick={() => void confirmImport()}
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-4 py-2 rounded font-bold text-xs uppercase transition-colors flex-1"
               >
-                אשר ייבוא
+                {isSaving ? 'שומר…' : 'אשר ייבוא'}
               </button>
               <button
                 onClick={cancelImport}
+                disabled={isSaving}
                 className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded font-bold text-xs uppercase transition-colors flex-1"
               >
                 ביטול
@@ -141,10 +148,14 @@ export default function UploadPage() {
             <span className="text-xs font-bold uppercase tracking-wide">יש כרגע {planItems.length} נקודות בתוכנית.</span>
           </div>
           <button
+            disabled={isSaving}
             onClick={() => {
               if (isConfirmingClear) {
-                clearPlanItems();
-                setIsConfirmingClear(false);
+                void clearPlanItems()
+                  .then(() => setIsConfirmingClear(false))
+                  .catch((clearError: unknown) => {
+                    setError(clearError instanceof Error ? clearError.message : 'מחיקת התוכנית נכשלה');
+                  });
               } else {
                 setIsConfirmingClear(true);
                 if (clearConfirmationTimeoutRef.current !== null) {
@@ -156,7 +167,7 @@ export default function UploadPage() {
                 );
               }
             }}
-            className={cn("text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded transition-colors", isConfirmingClear ? "bg-rose-500 text-white" : "text-slate-300 hover:text-white bg-white/10")}
+            className={cn("text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded transition-colors disabled:opacity-60", isConfirmingClear ? "bg-rose-500 text-white" : "text-slate-300 hover:text-white bg-white/10")}
           >
             {isConfirmingClear ? 'לחץ שוב לאישור' : 'נקה תוכנית'}
           </button>

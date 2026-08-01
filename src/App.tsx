@@ -3,95 +3,132 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { lazy, Suspense, useState } from 'react';
-import { PlanningProvider } from './store/PlanningContext';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { Cloud, LayoutDashboard, LoaderCircle, LogOut, RefreshCw } from 'lucide-react';
+import { AuthProvider, useAuth } from './store/AuthContext';
+import { PlanningProvider, usePlanning } from './store/PlanningContext';
+import AuthGate from './components/AuthGate';
 import PlanPage from './pages/PlanPage';
 import WorkerPage from './pages/WorkerPage';
 import CreateTaskPage from './pages/CreateTaskPage';
-import { LayoutDashboard } from 'lucide-react';
 import { cn } from './lib/utils';
 
 const UploadPage = lazy(() => import('./pages/UploadPage'));
+type AppTab = 'upload' | 'plan' | 'worker' | 'create';
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState<'upload' | 'plan' | 'worker' | 'create'>('plan');
+function PlannerApp() {
+  const [activeTab, setActiveTab] = useState<AppTab>('plan');
+  const { user, signOut } = useAuth();
+  const { access, isLoading, isSaving, error, refreshPlanItems } = usePlanning();
+  const canManage = access?.role === 'coordinator';
+
+  useEffect(() => {
+    if (access?.role === 'team') setActiveTab('worker');
+  }, [access?.role]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-emerald-700 gap-3" dir="rtl">
+        <LoaderCircle className="w-8 h-8 animate-spin" />
+        <span className="text-sm font-bold">טוען תוכנית עבודה מ-Supabase…</span>
+      </div>
+    );
+  }
+
+  if (!access) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4" dir="rtl">
+        <div className="max-w-md bg-white border border-rose-200 rounded-xl p-6 text-center shadow-sm">
+          <h1 className="text-lg font-black text-slate-900">לא ניתן לטעון את תוכנית העבודה</h1>
+          <p className="mt-2 text-sm text-rose-700 break-words" dir="ltr">{error}</p>
+          <button
+            type="button"
+            onClick={() => void refreshPlanItems()}
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-slate-900 text-white px-4 py-2 text-xs font-bold"
+          >
+            <RefreshCw className="w-4 h-4" /> נסה שוב
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <PlanningProvider>
-      <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans" dir="rtl">
-        {/* Top Navigation Bar */}
-        <header className="h-14 bg-emerald-900 text-white flex items-center justify-between px-4 sm:px-6 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex w-8 h-8 bg-emerald-500 rounded items-center justify-center shrink-0">
-              <LayoutDashboard className="w-5 h-5" />
-            </div>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight uppercase">MAGOF <span className="font-normal opacity-70 hidden sm:inline">Planner</span></h1>
+    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans" dir="rtl">
+      <header className="min-h-14 bg-emerald-900 text-white flex items-center justify-between px-3 sm:px-6 shrink-0 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="hidden sm:flex w-8 h-8 bg-emerald-500 rounded items-center justify-center shrink-0">
+            <LayoutDashboard className="w-5 h-5" />
           </div>
-          <div className="flex items-center gap-2 sm:gap-6 text-xs sm:text-sm font-medium uppercase tracking-widest">
-            <div className="flex bg-black/20 rounded p-1">
-              <button
-                onClick={() => setActiveTab('plan')}
-                className={cn(
-                  "px-3 py-1 rounded font-bold transition-colors flex items-center gap-2",
-                  activeTab === 'plan' ? "bg-white text-emerald-900" : "text-white hover:bg-white/10"
-                )}
-              >
-                תכנון
-              </button>
-              <button
-                onClick={() => setActiveTab('create')}
-                className={cn(
-                  "px-3 py-1 rounded font-bold transition-colors flex items-center gap-2",
-                  activeTab === 'create' ? "bg-white text-emerald-900" : "text-white hover:bg-white/10"
-                )}
-              >
-                נקודה חדשה
-              </button>
-              <button
-                onClick={() => setActiveTab('upload')}
-                className={cn(
-                  "px-3 py-1 rounded font-bold transition-colors flex items-center gap-2",
-                  activeTab === 'upload' ? "bg-white text-emerald-900" : "text-white hover:bg-white/10"
-                )}
-              >
-                ייבוא
-              </button>
-              <button
-                onClick={() => setActiveTab('worker')}
-                className={cn(
-                  "px-3 py-1 rounded font-bold transition-colors flex items-center gap-2",
-                  activeTab === 'worker' ? "bg-white text-emerald-900" : "text-white hover:bg-white/10"
-                )}
-              >
-                צוות
-              </button>
-            </div>
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-lg font-bold tracking-tight uppercase truncate">MAGOF <span className="font-normal opacity-70 hidden sm:inline">Planner</span></h1>
+            <p className="hidden sm:block text-[9px] text-white/60 truncate">{access.workspaceName} • {access.workPlanName}</p>
           </div>
-        </header>
+        </div>
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto">
-          <Suspense fallback={<div className="p-8 text-center text-sm text-slate-500">טוען…</div>}>
-            {activeTab === 'upload' && <UploadPage />}
-            {activeTab === 'plan' && <PlanPage />}
-            {activeTab === 'worker' && <WorkerPage />}
-            {activeTab === 'create' && <CreateTaskPage />}
-          </Suspense>
-        </main>
+        <div className="flex items-center gap-2 min-w-0">
+          <nav className="flex bg-black/20 rounded p-1 overflow-x-auto" aria-label="ניווט ראשי">
+            {canManage && (
+              <>
+                <button type="button" onClick={() => setActiveTab('plan')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'plan' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>תכנון</button>
+                <button type="button" onClick={() => setActiveTab('create')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'create' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>נקודה חדשה</button>
+                <button type="button" onClick={() => setActiveTab('upload')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'upload' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>ייבוא</button>
+              </>
+            )}
+            <button type="button" onClick={() => setActiveTab('worker')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'worker' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>צוות</button>
+          </nav>
 
-        {/* Footer Status Bar */}
-        <footer className="hidden sm:flex h-8 bg-slate-800 text-white text-[10px] uppercase font-bold items-center px-6 justify-between shrink-0">
-          <div className="flex gap-4 items-center">
-            <span className="opacity-70">תכנון צוותי דיגום</span>
-            <span className="opacity-50 border-r border-white/10 pr-4">v0.1.0</span>
-          </div>
-          <div className="flex gap-6 opacity-70">
-            <span>משלים ל-AKOLogic</span>
-          </div>
-        </footer>
-        
-        {/* Mobile Navigation (Bottom bar) - simplified for mobile fallback if needed, but we integrated into top bar. Let's keep a small bar for mobile or just use top bar */}
-      </div>
-    </PlanningProvider>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="p-1.5 rounded bg-black/10 hover:bg-black/20 text-white/80"
+            title={`יציאה: ${user?.email ?? ''}`}
+            aria-label="יציאה"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {error && (
+        <div className="bg-rose-50 border-b border-rose-200 text-rose-800 px-4 py-2 text-xs font-bold flex items-center justify-between gap-3">
+          <span className="truncate" dir="ltr">{error}</span>
+          <button type="button" onClick={() => void refreshPlanItems()} className="shrink-0 underline">נסה שוב</button>
+        </div>
+      )}
+
+      <main className="flex-1 overflow-y-auto">
+        <Suspense fallback={<div className="p-8 text-center text-sm text-slate-500">טוען…</div>}>
+          {activeTab === 'upload' && canManage && <UploadPage />}
+          {activeTab === 'plan' && canManage && <PlanPage />}
+          {activeTab === 'worker' && <WorkerPage />}
+          {activeTab === 'create' && canManage && <CreateTaskPage />}
+        </Suspense>
+      </main>
+
+      <footer className="hidden sm:flex h-8 bg-slate-800 text-white text-[10px] uppercase font-bold items-center px-6 justify-between shrink-0">
+        <div className="flex gap-4 items-center">
+          <span className="opacity-70">תכנון צוותי דיגום</span>
+          <span className="opacity-50 border-r border-white/10 pr-4">v0.1.0</span>
+        </div>
+        <div className="flex items-center gap-2 opacity-70">
+          {isSaving ? <LoaderCircle className="w-3 h-3 animate-spin" /> : <Cloud className="w-3 h-3" />}
+          <span>{isSaving ? 'שומר ב-Supabase' : 'מסונכרן עם Supabase'}</span>
+          <span className="border-r border-white/10 pr-3">משלים ל-AKOLogic</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGate>
+        <PlanningProvider>
+          <PlannerApp />
+        </PlanningProvider>
+      </AuthGate>
+    </AuthProvider>
   );
 }

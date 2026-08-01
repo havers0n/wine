@@ -1,131 +1,148 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { PlanItem, PlanItemStatus } from '../types';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { PlanItem } from '../types';
+import {
+  PlanningAccessContext,
+  addPlanItem as addPlanItemToRepository,
+  clearPlanItems as clearRepositoryPlanItems,
+  getPlanningAccessContext,
+  listPlanItems,
+  replacePlanItems,
+  updatePlanItem as updateRepositoryPlanItem,
+} from '../services/planningRepository';
+import { clearLegacyPlanItems, readLegacyPlanItems } from './legacyPlanningMigration';
 
 interface PlanningContextType {
   planItems: PlanItem[];
-  setPlanItems: (items: PlanItem[]) => void;
-  mergePlanItems: (items: PlanItem[]) => void;
-  updatePlanItem: (id: string, updates: Partial<PlanItem>) => void;
-  clearPlanItems: () => void;
+  access: PlanningAccessContext | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
+  addPlanItem: (item: PlanItem) => Promise<void>;
+  mergePlanItems: (items: PlanItem[]) => Promise<void>;
+  updatePlanItem: (id: string, updates: Partial<PlanItem>) => Promise<void>;
+  clearPlanItems: () => Promise<void>;
+  refreshPlanItems: () => Promise<void>;
 }
 
 const PlanningContext = createContext<PlanningContextType | undefined>(undefined);
-const STORAGE_KEY = 'magof.plan-items.v2';
-const PREVIOUS_STORAGE_KEYS = ['magof.tasks.v1', 'vineyard_tasks'] as const;
 
-function asText(value: unknown): string {
-  return value === null || value === undefined ? '' : String(value);
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown planning repository error.';
 }
 
-function migrateStatus(value: unknown, team: string): PlanItemStatus {
-  if (value === PlanItemStatus.DEFERRED) return PlanItemStatus.DEFERRED;
-  if (value === PlanItemStatus.CANCELLED) return PlanItemStatus.CANCELLED;
-  if (value === PlanItemStatus.ASSIGNED || value === 'שויך') return PlanItemStatus.ASSIGNED;
-  return team ? PlanItemStatus.ASSIGNED : PlanItemStatus.PLANNED;
-}
+export function PlanningProvider({ children }: { children: ReactNode }) {
+  const [planItems, setPlanItems] = useState<PlanItem[]>([]);
+  const [access, setAccess] = useState<PlanningAccessContext | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-function migratePlanItem(value: unknown): PlanItem | null {
-  if (!value || typeof value !== 'object') return null;
-  const item = value as Record<string, unknown>;
-  const id = asText(item.id);
-  const date = asText(item.date);
-  const plotName = asText(item.plotName);
-  if (!id || !date || !plotName) return null;
+  const refreshPlanItems = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const accessContext = await getPlanningAccessContext();
+      let remoteItems = await listPlanItems();
 
-  const team = asText(item.team);
-  return {
-    id,
-    date,
-    farm: asText(item.farm),
-    plotName,
-    plotCode: asText(item.plotCode),
-    vineyard: asText(item.vineyard),
-    variety: asText(item.variety),
-    plantingYear: asText(item.plantingYear),
-    area: asText(item.area),
-    agronomist: asText(item.agronomist),
-    team,
-    plannedSamples: asText(item.plannedSamples ?? item.samplesCount),
-    sector: asText(item.sector ?? item.note),
-    sampleType: asText(item.sampleType),
-    color: asText(item.color),
-    coordinatorNote: asText(item.coordinatorNote) || undefined,
-    status: migrateStatus(item.status, team),
-  };
-}
+      if (remoteItems.length === 0 && accessContext.role === 'coordinator') {
+        const legacyItems = readLegacyPlanItems();
+        if (legacyItems.length > 0) {
+          await replacePlanItems(legacyItems);
+          clearLegacyPlanItems();
+          remoteItems = legacyItems;
+        }
+      }
 
-function loadPlanItems(): PlanItem[] {
-  const sourceKey = [STORAGE_KEY, ...PREVIOUS_STORAGE_KEYS]
-    .find((key) => localStorage.getItem(key) !== null);
-  if (!sourceKey) return [];
-
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(sourceKey) ?? '[]');
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(migratePlanItem).filter((item): item is PlanItem => item !== null);
-  } catch (error) {
-    console.error('Failed to load planning data from local storage', error);
-    return [];
-  }
-}
-
-export const PlanningProvider = ({ children }: { children: ReactNode }) => {
-  const [planItems, setPlanItemsState] = useState<PlanItem[]>(loadPlanItems);
+      setAccess(accessContext);
+      setPlanItems(remoteItems);
+    } catch (loadError) {
+      setError(errorMessage(loadError));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
+    void refreshPlanItems();
+  }, [refreshPlanItems]);
+
+  const runMutation = async (mutation: () => Promise<void>, onSuccess: () => void) => {
+    setIsSaving(true);
+    setError(null);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(planItems));
-      PREVIOUS_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
-    } catch (error) {
-      console.error('Failed to persist planning data to local storage', error);
+      await mutation();
+      onSuccess();
+    } catch (mutationError) {
+      const message = errorMessage(mutationError);
+      setError(message);
+      throw mutationError;
+    } finally {
+      setIsSaving(false);
     }
-  }, [planItems]);
-
-  const setPlanItems = (items: PlanItem[]) => {
-    setPlanItemsState(items);
   };
 
-  const mergePlanItems = (newItems: PlanItem[]) => {
-    setPlanItemsState((currentItems) => {
-      const currentById = new Map(currentItems.map((item) => [item.id, item]));
-
-      return newItems.map((item) => {
-        const current = currentById.get(item.id);
-        if (!current) return item;
-        return {
-          ...item,
-          status: current.status,
-          coordinatorNote: current.coordinatorNote ?? item.coordinatorNote,
-        };
-      });
-    });
-  };
-
-  const updatePlanItem = (id: string, updates: Partial<PlanItem>) => {
-    setPlanItemsState((currentItems) =>
-      currentItems.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+  const addPlanItem = async (item: PlanItem) => {
+    await runMutation(
+      () => addPlanItemToRepository(item),
+      () => setPlanItems((currentItems) => [...currentItems, item]),
     );
   };
 
-  const clearPlanItems = () => {
-    setPlanItemsState([]);
-    localStorage.removeItem(STORAGE_KEY);
-    PREVIOUS_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+  const mergePlanItems = async (items: PlanItem[]) => {
+    const currentById = new Map(planItems.map((item) => [item.id, item]));
+    const mergedItems = items.map((item) => {
+      const current = currentById.get(item.id);
+      if (!current) return item;
+      return {
+        ...item,
+        status: current.status,
+        coordinatorNote: current.coordinatorNote ?? item.coordinatorNote,
+      };
+    });
+
+    await runMutation(
+      () => replacePlanItems(mergedItems),
+      () => setPlanItems(mergedItems),
+    );
+  };
+
+  const updatePlanItem = async (id: string, updates: Partial<PlanItem>) => {
+    const current = planItems.find((item) => item.id === id);
+    if (!current) throw new Error(`Plan item not found: ${id}`);
+    const updatedItem = { ...current, ...updates };
+
+    await runMutation(
+      () => updateRepositoryPlanItem(updatedItem),
+      () => setPlanItems((items) => items.map((item) => (item.id === id ? updatedItem : item))),
+    );
+  };
+
+  const clearPlanItems = async () => {
+    await runMutation(clearRepositoryPlanItems, () => setPlanItems([]));
   };
 
   return (
     <PlanningContext.Provider
-      value={{ planItems, setPlanItems, mergePlanItems, updatePlanItem, clearPlanItems }}
+      value={{
+        planItems,
+        access,
+        isLoading,
+        isSaving,
+        error,
+        addPlanItem,
+        mergePlanItems,
+        updatePlanItem,
+        clearPlanItems,
+        refreshPlanItems,
+      }}
     >
       {children}
     </PlanningContext.Provider>
   );
-};
+}
 
-export const usePlanning = () => {
+export function usePlanning() {
   const context = useContext(PlanningContext);
-  if (context === undefined) {
-    throw new Error('usePlanning must be used within a PlanningProvider');
-  }
+  if (!context) throw new Error('usePlanning must be used within a PlanningProvider');
   return context;
-};
+}
