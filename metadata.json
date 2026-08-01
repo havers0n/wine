@@ -1,0 +1,8 @@
+{
+  "name": "MAGOF",
+  "description": "Task management application for vineyard harvesting and sampling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
