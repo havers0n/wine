@@ -306,9 +306,7 @@ export async function addPlanItem(item: PlanItem): Promise<void> {
   if (error) throw new PlanningRepositoryError(error.message);
 }
 
-export async function replacePlanItems(items: PlanItem[]): Promise<void> {
-  const context = await getPlanningAccessContext();
-  requireCoordinator(context);
+async function upsertPlanItemBatch(context: PlanningAccessContext, items: PlanItem[]): Promise<void> {
   const supabase = getSupabaseClient();
 
   for (let index = 0; index < items.length; index += 500) {
@@ -318,6 +316,19 @@ export async function replacePlanItems(items: PlanItem[]): Promise<void> {
       .upsert(rows, { onConflict: 'work_plan_id,id' });
     if (error) throw new PlanningRepositoryError(error.message);
   }
+}
+
+export async function upsertPlanItems(items: PlanItem[]): Promise<void> {
+  const context = await getPlanningAccessContext();
+  requireCoordinator(context);
+  await upsertPlanItemBatch(context, items);
+}
+
+export async function replacePlanItems(items: PlanItem[]): Promise<void> {
+  const context = await getPlanningAccessContext();
+  requireCoordinator(context);
+  const supabase = getSupabaseClient();
+  await upsertPlanItemBatch(context, items);
 
   const { data: storedItems, error: storedItemsError } = await supabase
     .from('plan_items')

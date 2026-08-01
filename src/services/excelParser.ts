@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { formatDisplayDate } from '../lib/dateUtils';
+import { compareDisplayDates, formatDisplayDate } from '../lib/dateUtils';
 import { PlanItem, PlanItemStatus } from '../types';
 
 type ExcelRow = Record<string, unknown>;
@@ -14,7 +14,10 @@ const REQUIRED_HEADERS = [
 
 export interface ExcelParseResult {
   planItems: PlanItem[];
+  totalRows: number;
   droppedRows: number;
+  dates: string[];
+  teams: string[];
 }
 
 export class ExcelImportError extends Error {}
@@ -66,15 +69,15 @@ function formatExcelDate(rawDate: unknown): string {
 }
 
 function stablePlanItemId(parts: string[]): string {
-  const source = parts.join('|');
-  let hash = 2166136261;
+  const source = parts.join('\u001f');
+  let hash = 14695981039346656037n;
 
   for (let index = 0; index < source.length; index += 1) {
-    hash ^= source.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
+    hash ^= BigInt(source.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * 1099511628211n);
   }
 
-  return `plan-item-${(hash >>> 0).toString(36)}`;
+  return `plan-item-${hash.toString(36)}`;
 }
 
 function validateHeaders(rows: ExcelRow[]): void {
@@ -102,6 +105,9 @@ export function parseExcelWorkbook(buffer: ArrayBuffer): ExcelParseResult {
   if (rows.length === 0) throw new ExcelImportError('הקובץ ריק');
   validateHeaders(rows);
 
+  const duplicateRows: number[] = [];
+  const seenIdentityKeys = new Set<string>();
+
   const planItems = rows.flatMap<PlanItem>((row, index) => {
     const date = formatExcelDate(row['תאריך']);
     const plotName = asText(row['שם חלקה']);
@@ -110,8 +116,21 @@ export function parseExcelWorkbook(buffer: ArrayBuffer): ExcelParseResult {
     const plotCode = asText(row['קוד/ שם במשק']);
     const team = asText(row['צוות דיגום']);
 
+    const sector = asText(row['הערה']);
+    const sampleType = asText(row['סוג דגימה']);
+    const plannedSamples = asText(row['מספר דגימות']);
+    const identityParts = [date, plotCode, plotName, sector, sampleType, plannedSamples];
+    const identityKey = identityParts.join('\u001f');
+    const id = stablePlanItemId(identityParts);
+
+    if (seenIdentityKeys.has(identityKey)) {
+      duplicateRows.push(index + 2);
+      return [];
+    }
+    seenIdentityKeys.add(identityKey);
+
     return [{
-      id: stablePlanItemId([date, plotCode, plotName, team, String(index + 2)]),
+      id,
       date,
       farm: asText(row['לקוח (מגדל)']),
       plotName,
@@ -122,9 +141,9 @@ export function parseExcelWorkbook(buffer: ArrayBuffer): ExcelParseResult {
       area: asText(row['שטח']),
       agronomist: asText(row['אגרונום']),
       team,
-      plannedSamples: asText(row['מספר דגימות']),
-      sector: asText(row['הערה']),
-      sampleType: asText(row['סוג דגימה']),
+      plannedSamples,
+      sector,
+      sampleType,
       color: asText(row['צבע']),
       status: team ? PlanItemStatus.ASSIGNED : PlanItemStatus.PLANNED,
     }];
@@ -134,8 +153,17 @@ export function parseExcelWorkbook(buffer: ArrayBuffer): ExcelParseResult {
     throw new ExcelImportError('לא נמצאו שורות עם תאריך ושם חלקה תקינים');
   }
 
+  if (duplicateRows.length > 0) {
+    throw new ExcelImportError(
+      `נמצאו שורות כפולות שלא ניתן לייבא בבטחה: ${duplicateRows.join(', ')}`,
+    );
+  }
+
   return {
     planItems,
+    totalRows: rows.length,
     droppedRows: rows.length - planItems.length,
+    dates: Array.from(new Set(planItems.map((item) => item.date))).sort(compareDisplayDates),
+    teams: Array.from(new Set(planItems.map((item) => item.team).filter(Boolean))).sort(),
   };
 }

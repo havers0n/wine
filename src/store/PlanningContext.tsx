@@ -7,6 +7,7 @@ import {
   getPlanningAccessContext,
   listPlanItems,
   replacePlanItems,
+  upsertPlanItems,
   updatePlanItem as updateRepositoryPlanItem,
 } from '../services/planningRepository';
 import { clearLegacyPlanItems, readLegacyPlanItems } from './legacyPlanningMigration';
@@ -90,7 +91,7 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
 
   const mergePlanItems = async (items: PlanItem[]) => {
     const currentById = new Map(planItems.map((item) => [item.id, item]));
-    const mergedItems = items.map((item) => {
+    const mergedImports = items.map((item) => {
       const current = currentById.get(item.id);
       if (!current) return item;
       return {
@@ -99,9 +100,14 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
         coordinatorNote: current.coordinatorNote ?? item.coordinatorNote,
       };
     });
+    const importedIds = new Set(mergedImports.map((item) => item.id));
+    const mergedItems = [
+      ...planItems.filter((item) => !importedIds.has(item.id)),
+      ...mergedImports,
+    ];
 
     await runMutation(
-      () => replacePlanItems(mergedItems),
+      () => upsertPlanItems(mergedImports),
       () => setPlanItems(mergedItems),
     );
   };

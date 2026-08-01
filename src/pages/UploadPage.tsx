@@ -11,6 +11,9 @@ export default function UploadPage() {
   const { planItems, mergePlanItems, clearPlanItems, isSaving } = usePlanning();
   const [error, setError] = useState<string | null>(null);
   const [pendingPlanItems, setPendingPlanItems] = useState<PlanItem[]>([]);
+  const [pendingDates, setPendingDates] = useState<string[]>([]);
+  const [pendingTeams, setPendingTeams] = useState<string[]>([]);
+  const [totalRows, setTotalRows] = useState(0);
   const [droppedRows, setDroppedRows] = useState(0);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -22,11 +25,20 @@ export default function UploadPage() {
     }
   }, []);
 
+  const resetPendingImport = () => {
+    setPendingPlanItems([]);
+    setPendingDates([]);
+    setPendingTeams([]);
+    setTotalRows(0);
+    setDroppedRows(0);
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setError(null);
+    resetPendingImport();
 
     try {
       if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -35,6 +47,9 @@ export default function UploadPage() {
 
       const result = parseExcelWorkbook(await file.arrayBuffer());
       setPendingPlanItems(result.planItems);
+      setPendingDates(result.dates);
+      setPendingTeams(result.teams);
+      setTotalRows(result.totalRows);
       setDroppedRows(result.droppedRows);
     } catch (uploadError) {
       const message = uploadError instanceof ExcelImportError
@@ -51,16 +66,14 @@ export default function UploadPage() {
     setError(null);
     try {
       await mergePlanItems(pendingPlanItems);
-      setPendingPlanItems([]);
-      setDroppedRows(0);
+      resetPendingImport();
     } catch (importError) {
       setError(importError instanceof Error ? importError.message : 'שמירת התוכנית ב-Supabase נכשלה');
     }
   };
 
   const cancelImport = () => {
-    setPendingPlanItems([]);
-    setDroppedRows(0);
+    resetPendingImport();
   };
 
   return (
@@ -109,6 +122,9 @@ export default function UploadPage() {
             </div>
             <p className="text-emerald-800 mb-4 text-xs font-medium">
               נמצאו {pendingPlanItems.length} נקודות תכנון תקינות
+            </p>
+            <p className="text-emerald-800 mb-4 text-xs">
+              {totalRows} שורות בקובץ • {pendingDates.length} ימי עבודה • {pendingTeams.length} צוותים
             </p>
             {droppedRows > 0 && (
               <p className="text-amber-800 mb-4 text-xs font-medium">
