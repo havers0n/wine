@@ -126,6 +126,8 @@ function fromRow(row: PlanItemRow): PlanItem {
 async function resolveAccessContext(userId: string): Promise<PlanningAccessContext> {
   const supabase = getSupabaseClient();
   const preferredWorkspaceId = configuredWorkspaceId();
+  const defaultWorkspaceName = 'MAGOF';
+  const defaultPlanName = 'תוכנית עבודה';
   let membershipQuery = supabase
     .from('workspace_members')
     .select('workspace_id, role')
@@ -153,6 +155,7 @@ async function resolveAccessContext(userId: string): Promise<PlanningAccessConte
       .from('workspaces')
       .select('id')
       .eq('created_by', userId)
+      .eq('name', defaultWorkspaceName)
       .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -164,11 +167,26 @@ async function resolveAccessContext(userId: string): Promise<PlanningAccessConte
     } else {
       const { data: createdWorkspace, error: createWorkspaceError } = await supabase
         .from('workspaces')
-        .insert({ name: 'MAGOF', created_by: userId })
+        .upsert(
+          { name: defaultWorkspaceName, created_by: userId },
+          { onConflict: 'created_by,name', ignoreDuplicates: true },
+        )
         .select('id')
-        .single();
+        .maybeSingle();
       if (createWorkspaceError) throw new PlanningRepositoryError(createWorkspaceError.message);
-      workspaceId = createdWorkspace.id;
+
+      if (createdWorkspace) {
+        workspaceId = createdWorkspace.id;
+      } else {
+        const { data: concurrentWorkspace, error: concurrentWorkspaceError } = await supabase
+          .from('workspaces')
+          .select('id')
+          .eq('created_by', userId)
+          .eq('name', defaultWorkspaceName)
+          .single();
+        if (concurrentWorkspaceError) throw new PlanningRepositoryError(concurrentWorkspaceError.message);
+        workspaceId = concurrentWorkspace.id;
+      }
     }
 
     const { error: membershipCreateError } = await supabase
@@ -205,16 +223,31 @@ async function resolveAccessContext(userId: string): Promise<PlanningAccessConte
     }
     const { data: createdPlan, error: createPlanError } = await supabase
       .from('work_plans')
-      .insert({
-        workspace_id: workspaceId,
-        name: 'תוכנית עבודה',
-        status: WorkPlanStatus.DRAFT,
-        created_by: userId,
-      })
+      .upsert(
+        {
+          workspace_id: workspaceId,
+          name: defaultPlanName,
+          status: WorkPlanStatus.DRAFT,
+          created_by: userId,
+        },
+        { onConflict: 'workspace_id,name', ignoreDuplicates: true },
+      )
       .select('id, name, status')
-      .single();
+      .maybeSingle();
     if (createPlanError) throw new PlanningRepositoryError(createPlanError.message);
-    plan = createdPlan;
+
+    if (createdPlan) {
+      plan = createdPlan;
+    } else {
+      const { data: concurrentPlan, error: concurrentPlanError } = await supabase
+        .from('work_plans')
+        .select('id, name, status')
+        .eq('workspace_id', workspaceId)
+        .eq('name', defaultPlanName)
+        .single();
+      if (concurrentPlanError) throw new PlanningRepositoryError(concurrentPlanError.message);
+      plan = concurrentPlan;
+    }
   }
 
   return {
