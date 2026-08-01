@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useTasks } from '../store/TaskContext';
 import { TaskStatus } from '../types';
 import { PlusCircle, Calendar as CalendarIcon, Map, Leaf, Users, CheckCircle2 } from 'lucide-react';
-import { cn } from '../lib/utils';
 
 export default function CreateTaskPage() {
   const { tasks, setTasks } = useTasks();
@@ -42,7 +41,7 @@ export default function CreateTaskPage() {
     }
 
     const newTask = {
-      id: `manual-${Date.now()}`,
+      id: `manual-${crypto.randomUUID()}`,
       date: formattedDate,
       farm: formData.farm,
       plotName: formData.plotName,

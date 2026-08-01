@@ -1,8 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { useTasks } from '../store/TaskContext';
-import { Task, TaskStatus } from '../types';
+import { TaskStatus } from '../types';
 import { Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { compareDisplayDates } from '../lib/dateUtils';
+
+interface TeamStats {
+  total: number;
+  done: number;
+  problems: number;
+}
 
 export default function PlanPage() {
   const { tasks } = useTasks();
@@ -12,7 +19,7 @@ export default function PlanPage() {
 
   const dates = useMemo(() => {
     const uniqueDates = Array.from(new Set(tasks.map(t => t.date))).filter(Boolean);
-    return uniqueDates.sort();
+    return uniqueDates.sort(compareDisplayDates);
   }, [tasks]);
 
   const activeDate = selectedDate || (dates.length > 0 ? dates[0] : '');
@@ -31,12 +38,15 @@ export default function PlanPage() {
   }, [tasks, activeDate]);
 
   // Aggregate stats for the current date
-  const dateTasks = tasks.filter(t => t.date === activeDate);
+  const dateTasks = useMemo(
+    () => tasks.filter((task) => task.date === activeDate),
+    [tasks, activeDate],
+  );
   const totalDateTasks = dateTasks.length;
   const completedDateTasks = dateTasks.filter(t => t.status === TaskStatus.DONE).length;
   
   const statsByTeam = useMemo(() => {
-    const stats: Record<string, { total: number, done: number, problems: number }> = {};
+    const stats: Record<string, TeamStats> = {};
     allTeams.forEach(team => {
       stats[team] = { total: 0, done: 0, problems: 0 };
     });
@@ -57,7 +67,8 @@ export default function PlanPage() {
       case TaskStatus.IN_PROGRESS: return <span className="inline-block w-20 px-2 py-1 rounded text-[10px] font-black text-center bg-amber-100 text-amber-700 uppercase">בעבודה</span>;
       case TaskStatus.IMPOSSIBLE: return <span className="inline-block w-20 px-2 py-1 rounded text-[10px] font-black text-center bg-rose-100 text-rose-700 uppercase">תקלה</span>;
       case TaskStatus.NEEDS_CHECK: return <span className="inline-block w-20 px-2 py-1 rounded text-[10px] font-black text-center bg-purple-100 text-purple-700 uppercase">לבדוק</span>;
-      default: return <span className="inline-block w-20 px-2 py-1 rounded text-[10px] font-black text-center bg-slate-100 text-slate-400 uppercase">שויך</span>;
+      case TaskStatus.ASSIGNED: return <span className="inline-block w-20 px-2 py-1 rounded text-[10px] font-black text-center bg-slate-100 text-slate-600 uppercase">שויך</span>;
+      case TaskStatus.PLANNED: return <span className="inline-block w-20 px-2 py-1 rounded text-[10px] font-black text-center bg-slate-100 text-slate-500 uppercase">מתוכנן</span>;
     }
   };
 
@@ -88,8 +99,7 @@ export default function PlanPage() {
     );
   }
 
-  // Top 3 teams for summary cards
-  const topTeams = Object.entries(statsByTeam).sort((a,b) => b[1].total - a[1].total).slice(0, 3);
+  const teamStats = Object.entries(statsByTeam).sort((a, b) => b[1].total - a[1].total);
 
   return (
     <div className="flex flex-col h-full p-4 sm:p-6 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500" dir="rtl">
@@ -113,8 +123,8 @@ export default function PlanPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
-        {topTeams.map(([team, stats]) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 shrink-0">
+        {teamStats.map(([team, stats]) => {
            const percent = stats.total > 0 ? (stats.done / stats.total) * 100 : 0;
            return (
              <div key={team} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">

@@ -1,13 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { useTasks } from '../store/TaskContext';
-import { Task, TaskStatus } from '../types';
-import { MapPin, CheckCircle2, AlertTriangle, FileText, ChevronLeft, Navigation } from 'lucide-react';
+import { TaskStatus } from '../types';
+import { MapPin, AlertTriangle, FileText, ChevronLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { compareDisplayDates } from '../lib/dateUtils';
 
 export default function WorkerPage() {
   const { tasks, updateTask } = useTasks();
   const [selectedTeam, setSelectedTeam] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [activeTask, setActiveTask] = useState<string | null>(null);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
 
   // Derive available teams
   const teams = useMemo(() => {
@@ -15,9 +18,18 @@ export default function WorkerPage() {
     return t.sort();
   }, [tasks]);
 
-  const teamTasks = useMemo(() => {
-    return tasks.filter(t => t.team === selectedTeam);
+  const teamDates = useMemo(() => {
+    const dates = new Set(
+      tasks.filter((task) => task.team === selectedTeam).map((task) => task.date),
+    );
+    return Array.from(dates).filter(Boolean).sort(compareDisplayDates);
   }, [tasks, selectedTeam]);
+
+  const activeDate = selectedDate || teamDates[0] || '';
+
+  const teamTasks = useMemo(() => {
+    return tasks.filter((task) => task.team === selectedTeam && task.date === activeDate);
+  }, [tasks, selectedTeam, activeDate]);
 
   // If no team selected, show team selector
   if (!selectedTeam) {
@@ -34,7 +46,10 @@ export default function WorkerPage() {
             {teams.map(team => (
               <button
                 key={team}
-                onClick={() => setSelectedTeam(team)}
+                onClick={() => {
+                  setSelectedTeam(team);
+                  setSelectedDate('');
+                }}
                 className="bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-900 p-4 rounded-xl font-bold text-sm uppercase transition-all flex justify-between items-center"
               >
                 צוות {team}
@@ -48,7 +63,9 @@ export default function WorkerPage() {
   }
 
   const handleStatusChange = (id: string, status: TaskStatus) => {
-    updateTask(id, { status });
+    const task = tasks.find((candidate) => candidate.id === id);
+    const workerComment = (commentDrafts[id] ?? task?.workerComment ?? '').trim() || undefined;
+    updateTask(id, { status, workerComment });
     if (status === TaskStatus.DONE || status === TaskStatus.IMPOSSIBLE) {
        setActiveTask(null);
     }
@@ -62,13 +79,37 @@ export default function WorkerPage() {
       {/* Header */}
       <div className="pt-6 px-4 pb-4 bg-emerald-600 text-white shrink-0 shadow-sm relative">
         <button 
-          onClick={() => setSelectedTeam('')}
+          onClick={() => {
+            setSelectedTeam('');
+            setSelectedDate('');
+            setActiveTask(null);
+          }}
           className="absolute top-4 left-4 text-[10px] text-white/80 font-bold uppercase tracking-widest px-2 py-1 bg-black/10 rounded"
         >
           החלף צוות
         </button>
-        <h2 className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">{new Date().toLocaleDateString('he-IL')} • {teamTasks.length} משימות</h2>
+        <h2 className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">{activeDate} • {teamTasks.length} משימות</h2>
         <div className="text-lg font-black uppercase tracking-tight mb-4">צוות {selectedTeam}</div>
+        {teamDates.length > 1 && (
+          <div className="flex gap-1 mb-4 overflow-x-auto" aria-label="בחירת יום עבודה">
+            {teamDates.map((date) => (
+              <button
+                key={date}
+                type="button"
+                onClick={() => {
+                  setSelectedDate(date);
+                  setActiveTask(null);
+                }}
+                className={cn(
+                  'rounded px-2.5 py-1 text-[10px] font-bold whitespace-nowrap',
+                  date === activeDate ? 'bg-white text-emerald-800' : 'bg-black/10 text-white/80',
+                )}
+              >
+                {date}
+              </button>
+            ))}
+          </div>
+        )}
         
         {/* Progress Bar */}
         <div className="flex items-center gap-3">
@@ -117,9 +158,13 @@ export default function WorkerPage() {
                     <span className="bg-rose-100 text-rose-700 text-[8px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">
                       תקלה
                     </span>
-                  ) : (
+                  ) : task.status === TaskStatus.ASSIGNED ? (
                     <span className="bg-slate-100 text-slate-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">
                       שויך
+                    </span>
+                  ) : (
+                    <span className="bg-slate-100 text-slate-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase shrink-0">
+                      מתוכנן
                     </span>
                   )}
                 </div>
@@ -154,8 +199,18 @@ export default function WorkerPage() {
                       placeholder="הוסף הערה או תיאור בעיה..."
                       className="w-full p-2.5 rounded bg-slate-50 border border-slate-200 text-xs focus:ring-1 focus:ring-emerald-500 outline-none resize-none font-medium"
                       rows={2}
-                      defaultValue={task.workerComment}
-                      onBlur={(e) => updateTask(task.id, { workerComment: e.target.value })}
+                      value={commentDrafts[task.id] ?? task.workerComment ?? ''}
+                      onChange={(event) => {
+                        setCommentDrafts((drafts) => ({
+                          ...drafts,
+                          [task.id]: event.target.value,
+                        }));
+                      }}
+                      onBlur={(event) => {
+                        updateTask(task.id, {
+                          workerComment: event.target.value.trim() || undefined,
+                        });
+                      }}
                     />
                     
                     <button 
@@ -164,17 +219,13 @@ export default function WorkerPage() {
                     >
                       סיום משימה
                     </button>
-                    <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div className="mt-1">
                       <button 
                          onClick={() => handleStatusChange(task.id, TaskStatus.IMPOSSIBLE)}
-                        className="py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-lg text-[10px] font-bold uppercase transition-colors flex items-center justify-center gap-1"
+                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-lg text-[10px] font-bold uppercase transition-colors flex items-center justify-center gap-1"
                       >
                         <AlertTriangle className="w-3 h-3" />
                         דווח בעיה
-                      </button>
-                      <button className="py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-bold uppercase transition-colors flex items-center justify-center gap-1">
-                        <Navigation className="w-3 h-3" />
-                        נווט מפה
                       </button>
                     </div>
                   </div>
