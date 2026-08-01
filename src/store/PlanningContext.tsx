@@ -1,5 +1,5 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
-import { PlanItem } from '../types';
+import { PlanItem, PlanItemStatus, WorkPlanStatus } from '../types';
 import {
   PlanningAccessContext,
   addPlanItem as addPlanItemToRepository,
@@ -9,6 +9,8 @@ import {
   replacePlanItems,
   upsertPlanItems,
   updatePlanItem as updateRepositoryPlanItem,
+  updatePlanItems as updateRepositoryPlanItems,
+  updateWorkPlanStatus as updateRepositoryWorkPlanStatus,
 } from '../services/planningRepository';
 import { clearLegacyPlanItems, readLegacyPlanItems } from './legacyPlanningMigration';
 
@@ -21,6 +23,8 @@ interface PlanningContextType {
   addPlanItem: (item: PlanItem) => Promise<void>;
   mergePlanItems: (items: PlanItem[]) => Promise<void>;
   updatePlanItem: (id: string, updates: Partial<PlanItem>) => Promise<void>;
+  updatePlanItems: (ids: string[], updates: Partial<PlanItem>) => Promise<void>;
+  setWorkPlanStatus: (status: WorkPlanStatus) => Promise<void>;
   clearPlanItems: () => Promise<void>;
   refreshPlanItems: () => Promise<void>;
 }
@@ -29,6 +33,19 @@ const PlanningContext = createContext<PlanningContextType | undefined>(undefined
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown planning repository error.';
+}
+
+function applyPlanItemUpdates(item: PlanItem, updates: Partial<PlanItem>): PlanItem {
+  const updatedItem = { ...item, ...updates };
+
+  if (
+    updates.team !== undefined
+    && (item.status === PlanItemStatus.PLANNED || item.status === PlanItemStatus.ASSIGNED)
+  ) {
+    updatedItem.status = updates.team.trim() ? PlanItemStatus.ASSIGNED : PlanItemStatus.PLANNED;
+  }
+
+  return updatedItem;
 }
 
 export function PlanningProvider({ children }: { children: ReactNode }) {
@@ -67,12 +84,16 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
     void refreshPlanItems();
   }, [refreshPlanItems]);
 
-  const runMutation = async (mutation: () => Promise<void>, onSuccess: () => void) => {
+  const runMutation = async <Result,>(
+    mutation: () => Promise<Result>,
+    onSuccess: (result: Result) => void,
+  ): Promise<Result> => {
     setIsSaving(true);
     setError(null);
     try {
-      await mutation();
-      onSuccess();
+      const result = await mutation();
+      onSuccess(result);
+      return result;
     } catch (mutationError) {
       const message = errorMessage(mutationError);
       setError(message);
@@ -115,11 +136,32 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
   const updatePlanItem = async (id: string, updates: Partial<PlanItem>) => {
     const current = planItems.find((item) => item.id === id);
     if (!current) throw new Error(`Plan item not found: ${id}`);
-    const updatedItem = { ...current, ...updates };
+    const updatedItem = applyPlanItemUpdates(current, updates);
 
     await runMutation(
       () => updateRepositoryPlanItem(updatedItem),
       () => setPlanItems((items) => items.map((item) => (item.id === id ? updatedItem : item))),
+    );
+  };
+
+  const updatePlanItems = async (ids: string[], updates: Partial<PlanItem>) => {
+    const selectedIds = new Set(ids);
+    const updatedItems = planItems
+      .filter((item) => selectedIds.has(item.id))
+      .map((item) => applyPlanItemUpdates(item, updates));
+    if (updatedItems.length === 0) throw new Error('No plan items were selected.');
+
+    const updatedById = new Map(updatedItems.map((item) => [item.id, item]));
+    await runMutation(
+      () => updateRepositoryPlanItems(updatedItems),
+      () => setPlanItems((items) => items.map((item) => updatedById.get(item.id) ?? item)),
+    );
+  };
+
+  const setWorkPlanStatus = async (status: WorkPlanStatus) => {
+    await runMutation(
+      () => updateRepositoryWorkPlanStatus(status),
+      (updatedAccess) => setAccess(updatedAccess),
     );
   };
 
@@ -138,6 +180,8 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
         addPlanItem,
         mergePlanItems,
         updatePlanItem,
+        updatePlanItems,
+        setWorkPlanStatus,
         clearPlanItems,
         refreshPlanItems,
       }}

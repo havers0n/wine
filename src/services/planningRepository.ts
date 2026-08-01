@@ -352,6 +352,33 @@ export async function updatePlanItem(item: PlanItem): Promise<void> {
   await addPlanItem(item);
 }
 
+export async function updatePlanItems(items: PlanItem[]): Promise<void> {
+  const context = await getPlanningAccessContext();
+  requireCoordinator(context);
+  await upsertPlanItemBatch(context, items);
+}
+
+export async function updateWorkPlanStatus(status: WorkPlanStatus): Promise<PlanningAccessContext> {
+  const context = await getPlanningAccessContext();
+  requireCoordinator(context);
+
+  const { data, error } = await getSupabaseClient()
+    .from('work_plans')
+    .update({ status })
+    .eq('id', context.workPlanId)
+    .eq('workspace_id', context.workspaceId)
+    .select('status')
+    .single();
+  if (error) throw new PlanningRepositoryError(error.message);
+
+  const updatedContext = {
+    ...context,
+    workPlanStatus: assertPlanStatus(data.status),
+  };
+  accessContextPromise = Promise.resolve(updatedContext);
+  return updatedContext;
+}
+
 export async function clearPlanItems(): Promise<void> {
   const context = await getPlanningAccessContext();
   requireCoordinator(context);
