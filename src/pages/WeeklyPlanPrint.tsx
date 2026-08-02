@@ -62,7 +62,7 @@ function PageFooter({ generatedAt }: { generatedAt: Date }) {
   return (
     <footer className="weekly-print-footer">
       <span>MAGOF Planner • הופק בתאריך {generationTime(generatedAt)}</span>
-      <span>פותח ב❤️ על ידי דניאל</span>
+      <span>תכנון שבועי לצוותי הדיגום</span>
     </footer>
   );
 }
