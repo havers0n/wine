@@ -6,3 +6,581 @@
     font-family: 'Assistant', sans-serif;
   }
 }
+
+.weekly-print-preview {
+  min-height: 100%;
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.weekly-print-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1.25rem;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #cbd5e1;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.weekly-print-primary-button,
+.weekly-print-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.6rem;
+  padding: 0.62rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.weekly-print-primary-button {
+  color: white;
+  background: #047857;
+}
+
+.weekly-print-primary-button:hover {
+  background: #065f46;
+}
+
+.weekly-print-primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.weekly-print-secondary-button {
+  color: #334155;
+  background: white;
+  border: 1px solid #cbd5e1;
+}
+
+.weekly-print-secondary-button:hover {
+  background: #f8fafc;
+}
+
+.weekly-print-filter {
+  display: grid;
+  gap: 0.2rem;
+  color: #475569;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.weekly-print-filter select {
+  min-width: 9rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.55rem;
+  padding: 0.48rem 0.65rem;
+  background: white;
+  color: #0f172a;
+  font-size: 0.75rem;
+  outline: none;
+}
+
+.weekly-print-document {
+  display: grid;
+  justify-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  overflow-x: auto;
+}
+
+.weekly-print-page {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 277mm;
+  min-height: 190mm;
+  padding: 11mm 12mm 8mm;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.3rem;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14);
+}
+
+.weekly-summary-header,
+.weekly-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8mm;
+  border-bottom: 2px solid #064e3b;
+  padding-bottom: 5mm;
+}
+
+.weekly-summary-header h1,
+.weekly-detail-header h1 {
+  margin: 0.5mm 0 0;
+  color: #0f172a;
+  font-size: 24pt;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.weekly-print-eyebrow {
+  margin: 0;
+  color: #047857;
+  font-size: 8pt;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.weekly-print-period,
+.weekly-detail-header > div > p:last-child {
+  margin: 2mm 0 0;
+  color: #64748b;
+  font-size: 10pt;
+  font-weight: 700;
+}
+
+.weekly-print-logo {
+  display: flex;
+  width: 25mm;
+  height: 25mm;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #dbe5df;
+  border-radius: 4mm;
+  background: white;
+}
+
+.weekly-print-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(2.05);
+}
+
+.weekly-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3mm;
+  margin-top: 6mm;
+}
+
+.weekly-kpi-grid > div {
+  display: grid;
+  gap: 1mm;
+  padding: 4mm;
+  border: 1px solid #dbe5df;
+  border-radius: 3mm;
+  background: #f7faf8;
+}
+
+.weekly-kpi-grid strong {
+  color: #064e3b;
+  font-size: 20pt;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.weekly-kpi-grid span {
+  color: #64748b;
+  font-size: 8pt;
+  font-weight: 700;
+}
+
+.weekly-unassigned-warning {
+  margin-top: 3mm;
+  padding: 2.5mm 4mm;
+  border: 1px solid #fcd34d;
+  border-radius: 2.5mm;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 9pt;
+  font-weight: 700;
+}
+
+.weekly-summary-columns {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 8mm;
+  margin-top: 7mm;
+}
+
+.weekly-section-title {
+  display: flex;
+  align-items: center;
+  gap: 2.5mm;
+  margin-bottom: 3mm;
+}
+
+.weekly-section-title svg {
+  width: 6mm;
+  height: 6mm;
+  padding: 1.2mm;
+  color: #047857;
+  border-radius: 2mm;
+  background: #d1fae5;
+}
+
+.weekly-section-title h2,
+.weekly-matrix-section h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 11pt;
+  font-weight: 800;
+}
+
+.weekly-section-title p {
+  margin: 0.5mm 0 0;
+  color: #94a3b8;
+  font-size: 7pt;
+  font-weight: 600;
+}
+
+.weekly-day-bars {
+  display: grid;
+  gap: 2.5mm;
+}
+
+.weekly-day-bar-row {
+  display: grid;
+  grid-template-columns: 24mm 1fr 9mm;
+  align-items: center;
+  gap: 2mm;
+  color: #475569;
+  font-size: 8pt;
+  font-weight: 700;
+}
+
+.weekly-day-bar-row > div {
+  height: 3mm;
+  overflow: hidden;
+  border-radius: 2mm;
+  background: #e2e8f0;
+}
+
+.weekly-day-bar-row i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6d244e, #047857);
+}
+
+.weekly-day-bar-row strong {
+  color: #0f172a;
+  text-align: left;
+}
+
+.weekly-team-totals {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2mm;
+}
+
+.weekly-team-totals > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5mm 2mm;
+  padding: 2.2mm 3mm;
+  border-right: 1.3mm solid #047857;
+  border-radius: 1.5mm;
+  background: #f8fafc;
+}
+
+.weekly-team-totals span,
+.weekly-team-totals strong {
+  font-size: 8pt;
+}
+
+.weekly-team-totals small {
+  grid-column: 1 / -1;
+  color: #94a3b8;
+  font-size: 6.5pt;
+}
+
+.weekly-matrix-section {
+  margin-top: 6mm;
+}
+
+.weekly-matrix-table,
+.weekly-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.weekly-matrix-table {
+  margin-top: 2.5mm;
+  font-size: 7.5pt;
+}
+
+.weekly-matrix-table th,
+.weekly-matrix-table td {
+  padding: 1.6mm 2mm;
+  border: 1px solid #dbe5df;
+  text-align: center;
+}
+
+.weekly-matrix-table thead th {
+  color: white;
+  background: #064e3b;
+  font-weight: 800;
+}
+
+.weekly-matrix-table tbody th {
+  color: #1e293b;
+  background: #f1f5f9;
+  text-align: right;
+}
+
+.weekly-matrix-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.weekly-detail-header h1 {
+  font-size: 17pt;
+}
+
+.weekly-detail-header .weekly-print-logo {
+  width: 20mm;
+  height: 20mm;
+  border-radius: 3mm;
+}
+
+.weekly-team-card {
+  display: grid;
+  grid-template-columns: 1fr 3.2fr;
+  align-items: stretch;
+  gap: 5mm;
+  margin-top: 5mm;
+  padding: 4mm 5mm;
+  border: 1px solid #a7d9c4;
+  border-right: 2.2mm solid #047857;
+  border-radius: 3mm;
+  background: #f0fdf4;
+}
+
+.weekly-team-card-title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 5mm;
+  border-left: 1px solid #bbdccd;
+}
+
+.weekly-team-card-title span {
+  color: #64748b;
+  font-size: 7pt;
+  font-weight: 800;
+}
+
+.weekly-team-card-title h2 {
+  margin: 1mm 0 0;
+  color: #064e3b;
+  font-size: 17pt;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.weekly-team-card dl {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(3, 0.8fr);
+  align-items: center;
+  gap: 3mm;
+  margin: 0;
+}
+
+.weekly-team-card dl > div {
+  display: grid;
+  gap: 0.8mm;
+  min-width: 0;
+}
+
+.weekly-team-card dt {
+  color: #64748b;
+  font-size: 7pt;
+  font-weight: 800;
+}
+
+.weekly-team-card dd {
+  margin: 0;
+  color: #065f46;
+  font-size: 12pt;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.weekly-detail-table {
+  margin-top: 4mm;
+  color: #334155;
+  font-size: 7.2pt;
+}
+
+.weekly-detail-table th,
+.weekly-detail-table td {
+  padding: 1.7mm 1.8mm;
+  border: 1px solid #dbe5df;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.weekly-detail-table thead th {
+  color: white;
+  background: #064e3b;
+  font-weight: 800;
+  text-align: right;
+}
+
+.weekly-detail-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.weekly-detail-table td strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.weekly-detail-table td small {
+  display: block;
+  margin-top: 0.5mm;
+  color: #94a3b8;
+  font-size: 6pt;
+}
+
+.weekly-col-index,
+.weekly-row-index {
+  width: 8mm;
+  text-align: center !important;
+}
+
+.weekly-row-index {
+  color: #047857;
+  font-weight: 800;
+}
+
+.weekly-col-samples {
+  width: 14mm;
+  text-align: center !important;
+}
+
+.weekly-col-note {
+  width: 42mm;
+}
+
+.weekly-samples-cell {
+  color: #0f172a;
+  font-weight: 800;
+  text-align: center;
+}
+
+.weekly-note-cell {
+  color: #92400e;
+  background: #fffbeb !important;
+}
+
+.weekly-print-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 5mm;
+  margin-top: auto;
+  padding-top: 3mm;
+  border-top: 1px solid #e2e8f0;
+  color: #94a3b8;
+  font-size: 6.5pt;
+  font-weight: 700;
+}
+
+.weekly-print-empty {
+  max-width: 34rem;
+  margin: 4rem auto;
+  padding: 2rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 1rem;
+  background: white;
+  color: #64748b;
+  text-align: center;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .weekly-print-toolbar {
+    position: static;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .weekly-print-toolbar > div {
+    justify-content: space-between;
+  }
+}
+
+@page {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .app-chrome,
+  .print-hidden {
+    display: none !important;
+  }
+
+  .magof-app-shell,
+  .app-main,
+  .weekly-print-preview,
+  .weekly-print-document {
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  .weekly-print-page {
+    width: auto !important;
+    min-height: 190mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .weekly-print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .weekly-detail-table thead {
+    display: table-header-group;
+  }
+
+  .weekly-detail-table tr,
+  .weekly-matrix-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

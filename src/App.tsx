@@ -4,7 +4,7 @@
  */
 
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { LoaderCircle, LogOut, RefreshCw } from 'lucide-react';
+import { LoaderCircle, LogOut, Printer, RefreshCw } from 'lucide-react';
 import { AuthProvider, useAuth } from './store/AuthContext';
 import { PlanningProvider, usePlanning } from './store/PlanningContext';
 import AuthGate from './components/AuthGate';
@@ -14,7 +14,8 @@ import CreateTaskPage from './pages/CreateTaskPage';
 import { cn } from './lib/utils';
 
 const UploadPage = lazy(() => import('./pages/UploadPage'));
-type AppTab = 'upload' | 'plan' | 'worker' | 'create';
+const WeeklyPlanPrint = lazy(() => import('./pages/WeeklyPlanPrint'));
+type AppTab = 'upload' | 'plan' | 'worker' | 'create' | 'print';
 
 function PlannerApp() {
   const [activeTab, setActiveTab] = useState<AppTab>('plan');
@@ -54,8 +55,8 @@ function PlannerApp() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans" dir="rtl">
-      <header className="min-h-14 bg-emerald-900 text-white flex items-center justify-between px-3 sm:px-6 shrink-0 gap-3">
+    <div className="magof-app-shell flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans" dir="rtl">
+      <header className="app-chrome min-h-14 bg-emerald-900 text-white flex items-center justify-between px-3 sm:px-6 shrink-0 gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex w-9 h-9 sm:w-10 sm:h-10 overflow-hidden rounded-lg bg-white shadow-sm shrink-0 items-center justify-center">
             <img
@@ -77,6 +78,7 @@ function PlannerApp() {
                 <button type="button" onClick={() => setActiveTab('plan')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'plan' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>תכנון</button>
                 <button type="button" onClick={() => setActiveTab('create')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'create' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>נקודה חדשה</button>
                 <button type="button" onClick={() => setActiveTab('upload')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'upload' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>ייבוא</button>
+                <button type="button" onClick={() => setActiveTab('print')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap inline-flex items-center gap-1', activeTab === 'print' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}><Printer className="w-3 h-3" /> PDF</button>
               </>
             )}
             <button type="button" onClick={() => setActiveTab('worker')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'worker' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>{canManage ? 'תצוגת צוות' : 'היום שלי'}</button>
@@ -95,22 +97,23 @@ function PlannerApp() {
       </header>
 
       {error && (
-        <div className="bg-rose-50 border-b border-rose-200 text-rose-800 px-4 py-2 text-xs font-bold flex items-center justify-between gap-3">
+        <div className="app-chrome bg-rose-50 border-b border-rose-200 text-rose-800 px-4 py-2 text-xs font-bold flex items-center justify-between gap-3">
           <span className="truncate" dir="ltr">{error}</span>
           <button type="button" onClick={() => void refreshPlanItems()} className="shrink-0 underline">נסה שוב</button>
         </div>
       )}
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="app-main flex-1 overflow-y-auto">
         <Suspense fallback={<div className="p-8 text-center text-sm text-slate-500">טוען…</div>}>
           {activeTab === 'upload' && canManage && <UploadPage />}
           {activeTab === 'plan' && canManage && <PlanPage />}
           {activeTab === 'worker' && <WorkerPage />}
           {activeTab === 'create' && canManage && <CreateTaskPage />}
+          {activeTab === 'print' && canManage && <WeeklyPlanPrint onBack={() => setActiveTab('plan')} />}
         </Suspense>
       </main>
 
-      <footer className="hidden sm:flex h-8 bg-slate-800 text-white text-[10px] uppercase font-bold items-center px-6 justify-between shrink-0">
+      <footer className="app-chrome hidden sm:flex h-8 bg-slate-800 text-white text-[10px] uppercase font-bold items-center px-6 justify-between shrink-0">
         <div className="flex gap-4 items-center">
           <span className="opacity-70">תכנון צוותי דיגום</span>
           <span className="opacity-50 border-r border-white/10 pr-4">v0.1.0</span>
