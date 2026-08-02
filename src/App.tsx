@@ -76,7 +76,7 @@ function PlannerApp() {
             {canManage && (
               <>
                 <button type="button" onClick={() => setActiveTab('plan')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'plan' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>תכנון</button>
-                <button type="button" onClick={() => setActiveTab('create')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'create' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>נקודה חדשה</button>
+                <button type="button" onClick={() => setActiveTab('create')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'create' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>משימת דיגום חדשה</button>
                 <button type="button" onClick={() => setActiveTab('upload')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap', activeTab === 'upload' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}>ייבוא</button>
                 <button type="button" onClick={() => setActiveTab('print')} className={cn('px-2 sm:px-3 py-1 rounded font-bold transition-colors text-[10px] sm:text-xs whitespace-nowrap inline-flex items-center gap-1', activeTab === 'print' ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10')}><Printer className="w-3 h-3" /> PDF</button>
               </>

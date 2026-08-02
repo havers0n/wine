@@ -67,7 +67,7 @@ export default function CreateTaskPage() {
       await addPlanItem(newPlanItem);
       setSuccess(true);
     } catch (error) {
-      setSubmissionError(error instanceof Error ? error.message : 'שמירת הנקודה נכשלה');
+      setSubmissionError(error instanceof Error ? error.message : 'שמירת משימת הדיגום נכשלה');
       return;
     }
     
@@ -90,14 +90,14 @@ export default function CreateTaskPage() {
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500" dir="rtl">
       <div className="space-y-1">
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 text-right uppercase">יצירת נקודת תכנון חדשה</h1>
-        <p className="text-slate-500 text-right text-xs font-bold uppercase">הוספה ידנית של נקודה לתוכנית העבודה</p>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900 text-right uppercase">יצירת משימת דיגום</h1>
+        <p className="text-slate-500 text-right text-xs font-bold uppercase">הוספה ידנית של משימת דיגום לתוכנית העבודה</p>
       </div>
 
       {success && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-          <span className="font-bold text-sm">הנקודה נוספה בהצלחה לתוכנית העבודה!</span>
+          <span className="font-bold text-sm">משימת הדיגום נוספה בהצלחה לתוכנית העבודה!</span>
         </div>
       )}
 
@@ -316,7 +316,7 @@ export default function CreateTaskPage() {
             className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
           >
             <PlusCircle className="w-5 h-5" />
-            {isSaving ? 'שומר…' : 'הוסף לתוכנית'}
+            {isSaving ? 'שומר…' : 'צור משימה'}
           </button>
         </div>
       </form>
