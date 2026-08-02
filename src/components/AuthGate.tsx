@@ -1,10 +1,12 @@
 import React, { FormEvent, ReactNode, useState } from 'react';
-import { Database, LoaderCircle, Mail, Sprout } from 'lucide-react';
+import { Database, KeyRound, LoaderCircle, Mail, Sprout } from 'lucide-react';
 import { useAuth } from '../store/AuthContext';
 
 export default function AuthGate({ children }: { children: ReactNode }) {
-  const { user, isLoading, isConfigured, message, error, sendMagicLink } = useAuth();
+  const { user, isLoading, isConfigured, message, error, signInWithPassword, sendMagicLink } = useAuth();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'magic-link'>('password');
   const [isSending, setIsSending] = useState(false);
 
   if (!isConfigured) {
@@ -41,7 +43,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     event.preventDefault();
     setIsSending(true);
     try {
-      await sendMagicLink(email);
+      if (loginMethod === 'password') {
+        await signInWithPassword(email, password);
+      } else {
+        await sendMagicLink(email);
+      }
     } catch {
       // The provider exposes the localized error state.
     } finally {
@@ -56,9 +62,28 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <Sprout className="w-7 h-7" />
         </div>
         <h1 className="text-2xl font-black text-slate-900 text-center">כניסה ל-MAGOF</h1>
-        <p className="mt-2 text-sm text-slate-500 text-center">קבל קישור כניסה מאובטח למייל.</p>
+        <p className="mt-2 text-sm text-slate-500 text-center">
+          {loginMethod === 'password' ? 'התחבר באמצעות אימייל וסיסמה.' : 'קבל קישור כניסה מאובטח למייל.'}
+        </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-3">
+        <div className="mt-5 grid grid-cols-2 rounded-lg bg-slate-100 p-1 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setLoginMethod('password')}
+            className={`rounded-md px-3 py-2 transition-colors ${loginMethod === 'password' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500'}`}
+          >
+            כניסה עם סיסמה
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoginMethod('magic-link')}
+            className={`rounded-md px-3 py-2 transition-colors ${loginMethod === 'magic-link' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500'}`}
+          >
+            קישור למייל
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <label className="block text-xs font-bold text-slate-600">כתובת מייל</label>
           <div className="relative">
             <Mail className="absolute right-3 top-3 w-4 h-4 text-slate-400" />
@@ -73,12 +98,32 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               dir="ltr"
             />
           </div>
+          {loginMethod === 'password' && (
+            <>
+              <label className="block text-xs font-bold text-slate-600">סיסמה</label>
+              <div className="relative">
+                <KeyRound className="absolute right-3 top-3 w-4 h-4 text-slate-400" />
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 py-2.5 pr-10 pl-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  dir="ltr"
+                />
+              </div>
+            </>
+          )}
           <button
             type="submit"
             disabled={isSending}
             className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white py-2.5 text-sm font-bold transition-colors"
           >
-            {isSending ? 'שולח…' : 'שלח קישור כניסה'}
+            {isSending
+              ? (loginMethod === 'password' ? 'מתחבר…' : 'שולח…')
+              : (loginMethod === 'password' ? 'כניסה' : 'שלח קישור כניסה')}
           </button>
         </form>
 

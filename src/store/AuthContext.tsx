@@ -8,6 +8,7 @@ interface AuthContextValue {
   isConfigured: boolean;
   message: string | null;
   error: string | null;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
   sendMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -69,6 +70,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isConfigured: isSupabaseConfigured,
     message,
     error,
+    signInWithPassword: async (email: string, password: string) => {
+      setError(null);
+      setMessage(null);
+      const { data, error: signInError } = await getSupabaseClient().auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInError) {
+        setError(signInError.message);
+        throw signInError;
+      }
+      setUser(data.user);
+    },
     sendMagicLink: async (email: string) => {
       setError(null);
       setMessage(null);
