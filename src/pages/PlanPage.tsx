@@ -354,6 +354,23 @@ export default function PlanPage() {
             </button>
             <button
               type="button"
+              onClick={() => {
+                void deleteItems(
+                  Array.from(selectedIds),
+                  `למחוק את ${selectedIds.size} המשימות המסומנות? לא ניתן לשחזר את הפעולה.`,
+                )
+                  .then((wasDeleted) => {
+                    if (wasDeleted) clearSelection();
+                  })
+                  .catch(() => undefined);
+              }}
+              disabled={isSaving}
+              className="inline-flex items-center gap-1.5 rounded border border-rose-200 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-700 px-3 py-1.5 text-xs font-bold"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> מחיקת נבחרים
+            </button>
+            <button
+              type="button"
               onClick={clearSelection}
               disabled={isSaving}
               className="rounded bg-white border border-emerald-200 text-emerald-900 px-3 py-1.5 text-xs font-bold"
