@@ -492,6 +492,22 @@ export async function updatePlanItems(items: PlanItem[]): Promise<void> {
   await upsertPlanItemBatch(context, items);
 }
 
+export async function deletePlanItems(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  const context = await getPlanningAccessContext();
+  requireCoordinator(context);
+
+  for (let index = 0; index < ids.length; index += 200) {
+    const { error } = await getSupabaseClient()
+      .from('plan_items')
+      .delete()
+      .eq('work_plan_id', context.workPlanId)
+      .in('id', ids.slice(index, index + 200));
+    if (error) throw new PlanningRepositoryError(error.message);
+  }
+}
+
 export async function updateWorkPlanStatus(status: WorkPlanStatus): Promise<PlanningAccessContext> {
   const context = await getPlanningAccessContext();
   requireCoordinator(context);

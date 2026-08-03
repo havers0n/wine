@@ -5,6 +5,7 @@ import {
   PlotCatalogEntry,
   addPlanItem as addPlanItemToRepository,
   clearPlanItems as clearRepositoryPlanItems,
+  deletePlanItems as deleteRepositoryPlanItems,
   getPlanningAccessContext,
   listPlanItems,
   listPlotCatalog,
@@ -27,6 +28,7 @@ interface PlanningContextType {
   mergePlanItems: (items: PlanItem[]) => Promise<void>;
   updatePlanItem: (id: string, updates: Partial<PlanItem>) => Promise<void>;
   updatePlanItems: (ids: string[], updates: Partial<PlanItem>) => Promise<void>;
+  deletePlanItems: (ids: string[]) => Promise<void>;
   setWorkPlanStatus: (status: WorkPlanStatus) => Promise<void>;
   clearPlanItems: () => Promise<void>;
   refreshPlanItems: () => Promise<void>;
@@ -176,6 +178,16 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const deletePlanItems = async (ids: string[]) => {
+    const selectedIds = new Set(ids);
+    if (selectedIds.size === 0) return;
+
+    await runMutation(
+      () => deleteRepositoryPlanItems(Array.from(selectedIds)),
+      () => setPlanItems((items) => items.filter((item) => !selectedIds.has(item.id))),
+    );
+  };
+
   const setWorkPlanStatus = async (status: WorkPlanStatus) => {
     await runMutation(
       () => updateRepositoryWorkPlanStatus(status),
@@ -200,6 +212,7 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
         mergePlanItems,
         updatePlanItem,
         updatePlanItems,
+        deletePlanItems,
         setWorkPlanStatus,
         clearPlanItems,
         refreshPlanItems,

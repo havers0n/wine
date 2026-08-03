@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Calendar, Send, Undo2 } from 'lucide-react';
+import { Calendar, Send, Trash2, Undo2 } from 'lucide-react';
 import PlanItemEditor, { PlanItemEditorUpdates } from '../components/PlanItemEditor';
 import { usePlanning } from '../store/PlanningContext';
 import { PlanItem, PlanItemStatus, WorkPlanStatus } from '../types';
@@ -27,6 +27,7 @@ export default function PlanPage() {
     planItems,
     access,
     isSaving,
+    deletePlanItems,
     updatePlanItem,
     updatePlanItems,
     setWorkPlanStatus,
@@ -136,6 +137,35 @@ export default function PlanPage() {
     setEditingItemId(null);
   };
 
+  const deleteItems = async (ids: string[], confirmationMessage: string) => {
+    if (!window.confirm(confirmationMessage)) return false;
+    await deletePlanItems(ids);
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+    return true;
+  };
+
+  const deleteEditedItem = async () => {
+    if (!editingItem) return;
+    const wasDeleted = await deleteItems([editingItem.id], 'למחוק את המשימה הזאת? לא ניתן לשחזר את הפעולה.');
+    if (wasDeleted) setEditingItemId(null);
+  };
+
+  const deleteActiveDay = async () => {
+    if (!activeDate || dateItems.length === 0) return;
+    const wasDeleted = await deleteItems(
+      dateItems.map((item) => item.id),
+      `למחוק את כל ${dateItems.length} המשימות בתאריך ${activeDate}? לא ניתן לשחזר את הפעולה.`,
+    );
+    if (wasDeleted) {
+      setSelectedDate('');
+      setSelectedTeam('all');
+    }
+  };
+
   const togglePublication = async () => {
     await setWorkPlanStatus(isPublished ? WorkPlanStatus.DRAFT : WorkPlanStatus.PUBLISHED);
   };
@@ -211,6 +241,14 @@ export default function PlanPage() {
         </div>
 
         <div className="flex items-center gap-2 self-end lg:self-auto">
+          <button
+            type="button"
+            onClick={() => void deleteActiveDay().catch(() => undefined)}
+            disabled={isSaving || dateItems.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" /> מחיקת יום
+          </button>
           <span className={cn(
             'rounded-full px-3 py-1.5 text-[10px] font-black uppercase',
             isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800',
@@ -406,6 +444,7 @@ export default function PlanPage() {
           isSaving={isSaving}
           onClose={() => setEditingItemId(null)}
           onSave={saveEditedItem}
+          onDelete={deleteEditedItem}
         />
       )}
     </div>

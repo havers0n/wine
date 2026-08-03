@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { CalendarDays, MapPin, Save, X } from 'lucide-react';
+import { CalendarDays, MapPin, Save, Trash2, X } from 'lucide-react';
 import { PlanItem } from '../types';
 
 export interface PlanItemEditorUpdates {
@@ -14,6 +14,7 @@ interface PlanItemEditorProps {
   isSaving: boolean;
   onClose: () => void;
   onSave: (updates: PlanItemEditorUpdates) => Promise<void>;
+  onDelete: () => Promise<void>;
 }
 
 function toInputDate(displayDate: string): string {
@@ -34,6 +35,7 @@ export default function PlanItemEditor({
   isSaving,
   onClose,
   onSave,
+  onDelete,
 }: PlanItemEditorProps) {
   const [date, setDate] = useState(toInputDate(item.date));
   const [team, setTeam] = useState(item.team);
@@ -53,6 +55,14 @@ export default function PlanItemEditor({
         team: team.trim(),
         coordinatorNote: coordinatorNote.trim() || undefined,
       });
+    } catch {
+      // PlanningContext exposes the persisted error in the application banner.
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await onDelete();
     } catch {
       // PlanningContext exposes the persisted error in the application banner.
     }
@@ -132,11 +142,19 @@ export default function PlanItemEditor({
             />
           </label>
 
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-2 pt-1 flex-wrap">
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={isSaving}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 disabled:opacity-60 text-rose-700 px-4 py-2.5 text-sm font-bold"
+            >
+              <Trash2 className="w-4 h-4" /> מחיקת משימה
+            </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-4 py-2.5 text-sm font-bold"
+              className="flex-1 min-w-40 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-4 py-2.5 text-sm font-bold"
             >
               <Save className="w-4 h-4" /> {isSaving ? 'שומר…' : 'שמור שינויים'}
             </button>
