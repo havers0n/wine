@@ -131,7 +131,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
     setExportState('generating');
     try {
       await document.fonts.ready;
-      await html2pdf()
+      const pdfBlob = await html2pdf()
         .set({
           filename,
           margin: 10,
@@ -141,7 +141,16 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
         })
         .from(documentRef.current)
-        .save();
+        .outputPdf('blob') as Blob;
+      const downloadUrl = URL.createObjectURL(pdfBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = filename;
+      downloadLink.style.display = 'none';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
       setExportState('complete');
       window.setTimeout(() => setExportState('idle'), 4000);
     } catch (error) {
