@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { ArrowRight, CalendarDays, Printer, Users } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import html2pdf from 'html2pdf.js';
+import { ArrowRight, CalendarDays, Check, LoaderCircle, Printer, Users } from 'lucide-react';
 import { compareDisplayDates } from '../lib/dateUtils';
 import { usePlanning } from '../store/PlanningContext';
 import { PlanItem } from '../types';
@@ -69,9 +70,11 @@ function PageFooter({ generatedAt }: { generatedAt: Date }) {
 
 export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
   const { planItems, access } = usePlanning();
+  const documentRef = useRef<HTMLDivElement>(null);
   const [dateFilter, setDateFilter] = useState(ALL);
   const [teamFilter, setTeamFilter] = useState(ALL);
   const [generatedAt] = useState(() => new Date());
+  const [exportState, setExportState] = useState<'idle' | 'generating' | 'complete' | 'error'>('idle');
 
   const dates = useMemo(() => (
     Array.from(new Set(planItems.map((item) => item.date).filter(Boolean))).sort(compareDisplayDates)
@@ -119,11 +122,32 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
       ? visibleDates[0]
       : `${visibleDates[0]} - ${visibleDates[visibleDates.length - 1]}`;
 
-  const handlePrint = () => {
-    const previousTitle = document.title;
-    document.title = `MAGOF-${visibleDates[0] ?? 'weekly-plan'}`;
-    window.print();
-    document.title = previousTitle;
+  const handleDownload = async () => {
+    if (!documentRef.current || visibleItems.length === 0) return;
+
+    const datePart = (visibleDates[0] ?? 'weekly-plan').replaceAll('.', '-');
+    const filename = `MAGOF-weekly-plan-${datePart}.pdf`;
+
+    setExportState('generating');
+    try {
+      await document.fonts.ready;
+      await html2pdf()
+        .set({
+          filename,
+          margin: 10,
+          enableLinks: false,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        })
+        .from(documentRef.current)
+        .save();
+      setExportState('complete');
+      window.setTimeout(() => setExportState('idle'), 4000);
+    } catch (error) {
+      console.error('Unable to export weekly plan PDF', error);
+      setExportState('error');
+    }
   };
 
   return (
@@ -135,7 +159,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
           </button>
           <div>
             <h2 className="font-black text-slate-900">תצוגה מקדימה להדפסה</h2>
-            <p className="text-xs text-slate-500">בחלון ההדפסה יש לבחור שמירה כ-PDF ובפריסה לרוחב.</p>
+            <p className="text-xs text-slate-500">לחצו כדי להוריד PDF מוכן בפריסה לרוחב.</p>
           </div>
         </div>
 
@@ -156,19 +180,27 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
           </label>
           <button
             type="button"
-            onClick={handlePrint}
-            disabled={visibleItems.length === 0}
+            onClick={handleDownload}
+            disabled={visibleItems.length === 0 || exportState === 'generating'}
             className="weekly-print-primary-button"
           >
-            <Printer className="w-4 h-4" /> הדפס / שמור כ-PDF
+            {exportState === 'generating' ? <LoaderCircle className="w-4 h-4 animate-spin" /> : exportState === 'complete' ? <Check className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
+            {exportState === 'generating' ? 'מכין PDF...' : exportState === 'complete' ? 'ההורדה החלה' : 'הורדת PDF'}
           </button>
+          {exportState !== 'idle' && (
+            <p className={exportState === 'error' ? 'weekly-print-export-error' : 'weekly-print-export-status'} role="status" aria-live="polite">
+              {exportState === 'generating' && <><LoaderCircle className="w-3.5 h-3.5 animate-spin" /> מכין PDF להורדה...</>}
+              {exportState === 'complete' && <><Check className="w-3.5 h-3.5" /> ההורדה התחילה</>}
+              {exportState === 'error' && <>לא הצלחנו לייצא את הקובץ. נסו שוב.</>}
+            </p>
+          )}
         </div>
       </div>
 
       {visibleItems.length === 0 ? (
         <div className="weekly-print-empty print-hidden">אין נתונים התואמים לסינון שנבחר.</div>
       ) : (
-        <div className="weekly-print-document">
+        <div ref={documentRef} className="weekly-print-document">
           <section className="weekly-print-page weekly-summary-page">
             <header className="weekly-summary-header">
               <div>
