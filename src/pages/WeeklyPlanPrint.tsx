@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { ArrowRight, CalendarDays, Check, LoaderCircle, Printer, Users } from 'lucide-react';
 import { compareDisplayDates } from '../lib/dateUtils';
 import { usePlanning } from '../store/PlanningContext';
@@ -131,17 +132,29 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
     setExportState('generating');
     try {
       await document.fonts.ready;
-      const pdfBlob = await html2pdf()
-        .set({
-          filename,
-          margin: 10,
-          enableLinks: false,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        })
-        .from(documentRef.current)
-        .outputPdf('blob') as Blob;
+      const pages = Array.from(documentRef.current.querySelectorAll<HTMLElement>('.weekly-print-page'));
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape', compress: true });
+
+      for (const [index, page] of pages.entries()) {
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
+        const pageRatio = canvas.width / canvas.height;
+        const maxWidth = 277;
+        const maxHeight = 190;
+        const imageHeight = Math.min(maxHeight, maxWidth / pageRatio);
+        const imageWidth = imageHeight * pageRatio;
+        const imageX = (297 - imageWidth) / 2;
+        const imageY = (210 - imageHeight) / 2;
+
+        if (index > 0) pdf.addPage('a4', 'landscape');
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', imageX, imageY, imageWidth, imageHeight);
+      }
+
+      const pdfBlob = pdf.output('blob');
       const downloadUrl = URL.createObjectURL(pdfBlob);
       const downloadLink = document.createElement('a');
       downloadLink.href = downloadUrl;
