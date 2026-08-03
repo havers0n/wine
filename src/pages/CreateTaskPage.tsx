@@ -3,11 +3,14 @@ import { usePlanning } from '../store/PlanningContext';
 import { PlanItem, PlanItemStatus } from '../types';
 import { PlusCircle, Calendar as CalendarIcon, Map, Leaf, Users, CheckCircle2 } from 'lucide-react';
 
+type CatalogSearchField = 'search' | 'farm' | 'plotName' | 'plotCode' | null;
+
 export default function CreateTaskPage() {
   const { addPlanItem, isSaving, plotCatalog } = usePlanning();
   const [success, setSuccess] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [catalogQuery, setCatalogQuery] = useState('');
+  const [catalogSearchField, setCatalogSearchField] = useState<CatalogSearchField>(null);
   const [formData, setFormData] = useState({
     date: '',
     farm: '',
@@ -26,17 +29,30 @@ export default function CreateTaskPage() {
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'farm' || name === 'plotName' || name === 'plotCode') {
+      setCatalogQuery(value);
+      setCatalogSearchField(name);
+    }
   };
 
   const catalogMatches = useMemo(() => {
     const query = catalogQuery.trim().toLocaleLowerCase();
     if (!query) return [];
     return plotCatalog
-      .filter((plot) => [plot.farm, plot.vineyard, plot.plotName, plot.plotCode]
-        .some((value) => value.toLocaleLowerCase().includes(query)))
+      .filter((plot) => {
+        const values = catalogSearchField === 'farm'
+          ? [plot.farm]
+          : catalogSearchField === 'plotName'
+            ? [plot.plotName]
+            : catalogSearchField === 'plotCode'
+              ? [plot.plotCode]
+              : [plot.farm, plot.vineyard, plot.plotName, plot.plotCode];
+        return values.some((value) => value.toLocaleLowerCase().includes(query));
+      })
       .slice(0, 8);
-  }, [catalogQuery, plotCatalog]);
+  }, [catalogQuery, catalogSearchField, plotCatalog]);
 
   const selectCatalogPlot = (plot: typeof plotCatalog[number]) => {
     setFormData((previous) => ({
@@ -53,7 +69,25 @@ export default function CreateTaskPage() {
       sampleType: plot.sampleType || previous.sampleType,
     }));
     setCatalogQuery(`${plot.farm} · ${plot.plotName} · ${plot.plotCode}`);
+    setCatalogSearchField(null);
   };
+
+  const renderCatalogSuggestions = () => catalogSearchField !== null && catalogMatches.length > 0 && (
+    <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+      {catalogMatches.map((plot) => (
+        <button
+          key={plot.id}
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => selectCatalogPlot(plot)}
+          className="w-full px-3 py-2.5 text-right hover:bg-emerald-50 border-b last:border-b-0 border-slate-100"
+        >
+          <span className="block text-sm font-bold text-slate-800">{plot.farm} · {plot.plotName}</span>
+          <span className="block mt-0.5 text-xs text-slate-500">{plot.vineyard && `${plot.vineyard} · `}קוד {plot.plotCode || '—'} · {plot.variety || 'ללא זן'}</span>
+        </button>
+      ))}
+    </div>
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,12 +212,16 @@ export default function CreateTaskPage() {
             <input
               type="search"
               value={catalogQuery}
-              onChange={(event) => setCatalogQuery(event.target.value)}
+              onChange={(event) => {
+                setCatalogQuery(event.target.value);
+                setCatalogSearchField('search');
+              }}
+              onFocus={() => setCatalogSearchField('search')}
               placeholder="הקלידו משק, שם חלקה או קוד חלקה"
               className="mt-1 w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               autoComplete="off"
             />
-            {catalogMatches.length > 0 && (
+            {catalogSearchField === 'search' && catalogMatches.length > 0 && (
               <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
                 {catalogMatches.map((plot) => (
                   <button
@@ -200,7 +238,7 @@ export default function CreateTaskPage() {
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
               <label className="text-xs font-bold text-slate-500 uppercase">משק / לקוח <span className="text-rose-500">*</span></label>
               <input 
                 type="text" 
@@ -211,6 +249,7 @@ export default function CreateTaskPage() {
                 onChange={handleChange}
                 className="w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               />
+              {catalogSearchField === 'farm' && renderCatalogSuggestions()}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">שם כרם</label>
@@ -225,7 +264,7 @@ export default function CreateTaskPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
               <label className="text-xs font-bold text-slate-500 uppercase">שם חלקה <span className="text-rose-500">*</span></label>
               <input 
                 type="text" 
@@ -236,8 +275,9 @@ export default function CreateTaskPage() {
                 onChange={handleChange}
                 className="w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               />
+              {catalogSearchField === 'plotName' && renderCatalogSuggestions()}
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
               <label className="text-xs font-bold text-slate-500 uppercase">קוד חלקה <span className="text-rose-500">*</span></label>
               <input 
                 type="text" 
@@ -248,6 +288,7 @@ export default function CreateTaskPage() {
                 onChange={handleChange}
                 className="w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               />
+              {catalogSearchField === 'plotCode' && renderCatalogSuggestions()}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">מגוף / אזור</label>
