@@ -94,20 +94,10 @@ export type Database = {
         Row: {
           work_plan_id: number;
           id: string;
+          plot_catalog_id: number;
           work_date: string;
-          farm: string;
-          plot_name: string;
-          plot_code: string;
-          vineyard: string;
-          variety: string;
-          planting_year: number | null;
-          area: number | null;
-          agronomist: string;
           team: string;
           planned_samples: number;
-          sector: string;
-          sample_type: string;
-          color: string;
           coordinator_note: string | null;
           status: string;
           created_at: string;
@@ -116,20 +106,10 @@ export type Database = {
         Insert: {
           work_plan_id: number;
           id: string;
+          plot_catalog_id: number;
           work_date: string;
-          farm?: string;
-          plot_name: string;
-          plot_code?: string;
-          vineyard?: string;
-          variety?: string;
-          planting_year?: number | null;
-          area?: number | null;
-          agronomist?: string;
           team?: string;
           planned_samples?: number;
-          sector?: string;
-          sample_type?: string;
-          color?: string;
           coordinator_note?: string | null;
           status?: string;
           created_at?: string;
@@ -137,19 +117,9 @@ export type Database = {
         };
         Update: {
           work_date?: string;
-          farm?: string;
-          plot_name?: string;
-          plot_code?: string;
-          vineyard?: string;
-          variety?: string;
-          planting_year?: number | null;
-          area?: number | null;
-          agronomist?: string;
+          plot_catalog_id?: number;
           team?: string;
           planned_samples?: number;
-          sector?: string;
-          sample_type?: string;
-          color?: string;
           coordinator_note?: string | null;
           status?: string;
           updated_at?: string;
@@ -160,6 +130,69 @@ export type Database = {
             columns: ['work_plan_id'];
             isOneToOne: false;
             referencedRelation: 'work_plans';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'plan_items_plot_catalog_id_fkey';
+            columns: ['plot_catalog_id'];
+            isOneToOne: false;
+            referencedRelation: 'plot_catalog';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      plot_catalog: {
+        Row: {
+          id: number;
+          workspace_id: number;
+          farm: string;
+          vineyard: string;
+          plot_name: string;
+          plot_code: string;
+          sector: string;
+          variety: string;
+          planting_year: number | null;
+          area: number | null;
+          agronomist: string;
+          sample_type: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: never;
+          workspace_id: number;
+          farm?: string;
+          vineyard?: string;
+          plot_name: string;
+          plot_code?: string;
+          sector?: string;
+          variety?: string;
+          planting_year?: number | null;
+          area?: number | null;
+          agronomist?: string;
+          sample_type?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          farm?: string;
+          vineyard?: string;
+          plot_name?: string;
+          plot_code?: string;
+          sector?: string;
+          variety?: string;
+          planting_year?: number | null;
+          area?: number | null;
+          agronomist?: string;
+          sample_type?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'plot_catalog_workspace_id_fkey';
+            columns: ['workspace_id'];
+            isOneToOne: false;
+            referencedRelation: 'workspaces';
             referencedColumns: ['id'];
           },
         ];
@@ -174,3 +207,5 @@ export type Database = {
 
 export type PlanItemRow = Database['public']['Tables']['plan_items']['Row'];
 export type PlanItemInsert = Database['public']['Tables']['plan_items']['Insert'];
+export type PlotCatalogRow = Database['public']['Tables']['plot_catalog']['Row'];
+export type PlotCatalogInsert = Database['public']['Tables']['plot_catalog']['Insert'];

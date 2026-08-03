@@ -2,10 +2,12 @@ import React, { createContext, ReactNode, useCallback, useContext, useEffect, us
 import { PlanItem, PlanItemStatus, WorkPlanStatus } from '../types';
 import {
   PlanningAccessContext,
+  PlotCatalogEntry,
   addPlanItem as addPlanItemToRepository,
   clearPlanItems as clearRepositoryPlanItems,
   getPlanningAccessContext,
   listPlanItems,
+  listPlotCatalog,
   replacePlanItems,
   upsertPlanItems,
   updatePlanItem as updateRepositoryPlanItem,
@@ -16,6 +18,7 @@ import { clearLegacyPlanItems, readLegacyPlanItems } from './legacyPlanningMigra
 
 interface PlanningContextType {
   planItems: PlanItem[];
+  plotCatalog: PlotCatalogEntry[];
   access: PlanningAccessContext | null;
   isLoading: boolean;
   isSaving: boolean;
@@ -50,6 +53,7 @@ function applyPlanItemUpdates(item: PlanItem, updates: Partial<PlanItem>): PlanI
 
 export function PlanningProvider({ children }: { children: ReactNode }) {
   const [planItems, setPlanItems] = useState<PlanItem[]>([]);
+  const [plotCatalog, setPlotCatalog] = useState<PlotCatalogEntry[]>([]);
   const [access, setAccess] = useState<PlanningAccessContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,7 +64,7 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const accessContext = await getPlanningAccessContext();
-      let remoteItems = await listPlanItems();
+      let [remoteItems, catalogItems] = await Promise.all([listPlanItems(), listPlotCatalog()]);
 
       if (remoteItems.length === 0 && accessContext.role === 'coordinator') {
         const legacyItems = readLegacyPlanItems();
@@ -68,11 +72,13 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
           await replacePlanItems(legacyItems);
           clearLegacyPlanItems();
           remoteItems = legacyItems;
+          catalogItems = await listPlotCatalog();
         }
       }
 
       setAccess(accessContext);
       setPlanItems(remoteItems);
+      setPlotCatalog(catalogItems);
     } catch (loadError) {
       setError(errorMessage(loadError));
     } finally {
@@ -105,8 +111,14 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
 
   const addPlanItem = async (item: PlanItem) => {
     await runMutation(
-      () => addPlanItemToRepository(item),
-      () => setPlanItems((currentItems) => [...currentItems, item]),
+      async () => {
+        await addPlanItemToRepository(item);
+        return listPlotCatalog();
+      },
+      (catalogItems) => {
+        setPlanItems((currentItems) => [...currentItems, item]);
+        setPlotCatalog(catalogItems);
+      },
     );
   };
 
@@ -128,8 +140,14 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
     ];
 
     await runMutation(
-      () => upsertPlanItems(mergedImports),
-      () => setPlanItems(mergedItems),
+      async () => {
+        await upsertPlanItems(mergedImports);
+        return listPlotCatalog();
+      },
+      (catalogItems) => {
+        setPlanItems(mergedItems);
+        setPlotCatalog(catalogItems);
+      },
     );
   };
 
@@ -173,6 +191,7 @@ export function PlanningProvider({ children }: { children: ReactNode }) {
     <PlanningContext.Provider
       value={{
         planItems,
+        plotCatalog,
         access,
         isLoading,
         isSaving,

@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { usePlanning } from '../store/PlanningContext';
 import { PlanItem, PlanItemStatus } from '../types';
 import { PlusCircle, Calendar as CalendarIcon, Map, Leaf, Users, CheckCircle2 } from 'lucide-react';
 
 export default function CreateTaskPage() {
-  const { addPlanItem, isSaving } = usePlanning();
+  const { addPlanItem, isSaving, plotCatalog } = usePlanning();
   const [success, setSuccess] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [catalogQuery, setCatalogQuery] = useState('');
   const [formData, setFormData] = useState({
     date: '',
     farm: '',
@@ -26,6 +27,32 @@ export default function CreateTaskPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const catalogMatches = useMemo(() => {
+    const query = catalogQuery.trim().toLocaleLowerCase();
+    if (!query) return [];
+    return plotCatalog
+      .filter((plot) => [plot.farm, plot.vineyard, plot.plotName, plot.plotCode]
+        .some((value) => value.toLocaleLowerCase().includes(query)))
+      .slice(0, 8);
+  }, [catalogQuery, plotCatalog]);
+
+  const selectCatalogPlot = (plot: typeof plotCatalog[number]) => {
+    setFormData((previous) => ({
+      ...previous,
+      farm: plot.farm,
+      vineyard: plot.vineyard,
+      plotName: plot.plotName,
+      plotCode: plot.plotCode,
+      sector: plot.sector,
+      variety: plot.variety,
+      plantingYear: plot.plantingYear,
+      area: plot.area,
+      agronomist: plot.agronomist,
+      sampleType: plot.sampleType || previous.sampleType,
+    }));
+    setCatalogQuery(`${plot.farm} · ${plot.plotName} · ${plot.plotCode}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,6 +172,32 @@ export default function CreateTaskPage() {
           <div className="flex items-center gap-2 mb-4 text-emerald-700">
             <Map className="w-5 h-5" />
             <h2 className="font-bold uppercase tracking-tight text-sm">2. פרטי משק וחלקה</h2>
+          </div>
+          <div className="mb-5 relative">
+            <label className="text-xs font-bold text-slate-500 uppercase">חיפוש חלקה קיימת</label>
+            <input
+              type="search"
+              value={catalogQuery}
+              onChange={(event) => setCatalogQuery(event.target.value)}
+              placeholder="הקלידו משק, שם חלקה או קוד חלקה"
+              className="mt-1 w-full p-2.5 rounded bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+              autoComplete="off"
+            />
+            {catalogMatches.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+                {catalogMatches.map((plot) => (
+                  <button
+                    key={plot.id}
+                    type="button"
+                    onClick={() => selectCatalogPlot(plot)}
+                    className="w-full px-3 py-2.5 text-right hover:bg-emerald-50 border-b last:border-b-0 border-slate-100"
+                  >
+                    <span className="block text-sm font-bold text-slate-800">{plot.farm} · {plot.plotName}</span>
+                    <span className="block mt-0.5 text-xs text-slate-500">{plot.vineyard && `${plot.vineyard} · `}קוד {plot.plotCode || '—'} · {plot.variety || 'ללא זן'}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div className="space-y-1">
