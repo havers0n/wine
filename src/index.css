@@ -217,6 +217,13 @@
   font-weight: 700;
 }
 
+.weekly-kpi-grid small {
+  color: #475569;
+  font-size: 7.5pt;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .weekly-unassigned-warning {
   margin-top: 3mm;
   padding: 2.5mm 4mm;
@@ -273,7 +280,7 @@
 
 .weekly-day-bar-row {
   display: grid;
-  grid-template-columns: 24mm 1fr 9mm;
+  grid-template-columns: 39mm 1fr 9mm;
   align-items: center;
   gap: 2mm;
   color: #475569;
@@ -292,7 +299,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6d244e, #047857);
+  background: #047857;
 }
 
 .weekly-day-bar-row strong {
@@ -300,31 +307,34 @@
   text-align: left;
 }
 
-.weekly-team-totals {
+.weekly-operational-highlights {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 2mm;
+  gap: 3mm;
 }
 
-.weekly-team-totals > div {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.5mm 2mm;
-  padding: 2.2mm 3mm;
+.weekly-operational-highlights > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3mm;
+  min-height: 17mm;
+  padding: 3mm 4mm;
   border-right: 1.3mm solid #047857;
-  border-radius: 1.5mm;
+  border-radius: 2mm;
   background: #f8fafc;
 }
 
-.weekly-team-totals span,
-.weekly-team-totals strong {
-  font-size: 8pt;
+.weekly-operational-highlights span {
+  color: #475569;
+  font-size: 9pt;
+  font-weight: 700;
 }
 
-.weekly-team-totals small {
-  grid-column: 1 / -1;
-  color: #94a3b8;
-  font-size: 6.5pt;
+.weekly-operational-highlights strong {
+  color: #064e3b;
+  font-size: 16pt;
+  font-weight: 800;
 }
 
 .weekly-matrix-section {
@@ -370,6 +380,10 @@
   font-size: 17pt;
 }
 
+.weekly-detail-header .weekly-print-period {
+  font-size: 10pt;
+}
+
 .weekly-detail-header .weekly-print-logo {
   width: 20mm;
   height: 20mm;
@@ -381,8 +395,8 @@
   grid-template-columns: 1fr 3.2fr;
   align-items: stretch;
   gap: 5mm;
-  margin-top: 5mm;
-  padding: 4mm 5mm;
+  margin-top: 3mm;
+  padding: 2.5mm 4mm;
   border: 1px solid #a7d9c4;
   border-right: 2.2mm solid #047857;
   border-radius: 3mm;
@@ -399,7 +413,7 @@
 
 .weekly-team-card-title span {
   color: #64748b;
-  font-size: 7pt;
+  font-size: 9.5pt;
   font-weight: 800;
 }
 
@@ -427,7 +441,7 @@
 
 .weekly-team-card dt {
   color: #64748b;
-  font-size: 7pt;
+  font-size: 9.5pt;
   font-weight: 800;
 }
 
@@ -440,14 +454,14 @@
 }
 
 .weekly-detail-table {
-  margin-top: 4mm;
+  margin-top: 3mm;
   color: #334155;
-  font-size: 7.2pt;
+  font-size: 9.5pt;
 }
 
 .weekly-detail-table th,
 .weekly-detail-table td {
-  padding: 1.7mm 1.8mm;
+  padding: 1.4mm 2mm;
   border: 1px solid #dbe5df;
   vertical-align: top;
   overflow-wrap: anywhere;
@@ -471,15 +485,30 @@
 
 .weekly-detail-table td small {
   display: block;
-  margin-top: 0.5mm;
-  color: #94a3b8;
-  font-size: 6pt;
+  margin-top: 0.8mm;
+  color: #475569;
+  font-size: 9pt;
+  font-weight: 600;
 }
 
 .weekly-col-index,
 .weekly-row-index {
-  width: 8mm;
+  width: 15mm;
   text-align: center !important;
+}
+
+.weekly-col-location {
+  width: 72mm;
+}
+
+.weekly-col-code {
+  width: 29mm;
+}
+
+.weekly-code-cell {
+  color: #475569;
+  font-size: 9pt;
+  font-weight: 700;
 }
 
 .weekly-row-index {
@@ -488,16 +517,17 @@
 }
 
 .weekly-col-samples {
-  width: 14mm;
+  width: 20mm;
   text-align: center !important;
 }
 
 .weekly-col-note {
-  width: 42mm;
+  width: 34mm;
 }
 
 .weekly-samples-cell {
   color: #0f172a;
+  font-size: 12pt;
   font-weight: 800;
   text-align: center;
 }
@@ -512,11 +542,17 @@
   justify-content: space-between;
   gap: 5mm;
   margin-top: auto;
-  padding-top: 3mm;
+  padding-top: 2mm;
   border-top: 1px solid #e2e8f0;
-  color: #94a3b8;
-  font-size: 6.5pt;
+  color: #64748b;
+  font-size: 8pt;
   font-weight: 700;
+}
+
+.weekly-print-footer strong {
+  color: #334155;
+  font-size: 9pt;
+  font-weight: 800;
 }
 
 .weekly-print-empty {
