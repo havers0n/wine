@@ -8,6 +8,7 @@ import { PlanItem } from '../types';
 
 const ALL = 'all';
 const UNASSIGNED_TEAM = 'ללא שיוך';
+const DETAIL_ROWS_PER_PAGE = 12;
 
 interface WeeklyPlanPrintProps {
   onBack: () => void;
@@ -19,6 +20,13 @@ interface DetailGroup {
   items: PlanItem[];
 }
 
+interface DetailPage extends DetailGroup {
+  allItems: PlanItem[];
+  startIndex: number;
+  pageNumber: number;
+  pageCount: number;
+}
+
 function samplesFor(items: PlanItem[]): number {
   return items.reduce((total, item) => {
     const value = Number.parseInt(item.plannedSamples, 10);
@@ -28,6 +36,15 @@ function samplesFor(items: PlanItem[]): number {
 
 function teamName(item: PlanItem): string {
   return item.team.trim() || UNASSIGNED_TEAM;
+}
+
+function safeFilenamePart(value: string): string {
+  const sanitized = value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+    .replace(/[. ]+$/g, '')
+    .trim();
+
+  return sanitized || 'team';
 }
 
 function formatHebrewDate(value: string): string {
@@ -113,6 +130,23 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
     return groups;
   }, [visibleDates, visibleItems, visibleTeams]);
 
+  const detailPages = useMemo<DetailPage[]>(() => detailGroups.flatMap((group) => {
+    const pageCount = Math.ceil(group.items.length / DETAIL_ROWS_PER_PAGE);
+
+    return Array.from({ length: pageCount }, (_, pageIndex) => {
+      const startIndex = pageIndex * DETAIL_ROWS_PER_PAGE;
+      return {
+        date: group.date,
+        team: group.team,
+        items: group.items.slice(startIndex, startIndex + DETAIL_ROWS_PER_PAGE),
+        allItems: group.items,
+        startIndex,
+        pageNumber: pageIndex + 1,
+        pageCount,
+      };
+    });
+  }), [detailGroups]);
+
   const unassignedCount = visibleItems.filter((item) => !item.team.trim()).length;
   const maxDayItems = Math.max(1, ...visibleDates.map((date) => (
     visibleItems.filter((item) => item.date === date).length
@@ -127,7 +161,9 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
     if (!documentRef.current || visibleItems.length === 0) return;
 
     const datePart = (visibleDates[0] ?? 'weekly-plan').replaceAll('.', '-');
-    const filename = `MAGOF-weekly-plan-${datePart}.pdf`;
+    const filename = teamFilter === ALL
+      ? `MAGOF-weekly-plan-${datePart}.pdf`
+      : `${safeFilenamePart(teamFilter)}.pdf`;
 
     setExportState('generating');
     try {
@@ -316,8 +352,8 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
             <PageFooter generatedAt={generatedAt} />
           </section>
 
-          {detailGroups.map((group) => (
-            <section key={`${group.date}-${group.team}`} className="weekly-print-page weekly-detail-page">
+          {detailPages.map((group) => (
+            <section key={`${group.date}-${group.team}-${group.pageNumber}`} className="weekly-print-page weekly-detail-page">
               <header className="weekly-detail-header">
                 <div>
                   <p className="weekly-print-eyebrow">MAGOF PLANNER</p>
@@ -328,16 +364,19 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
 
               <section className="weekly-team-card" aria-label={`סיכום צוות ${group.team}`}>
                 <div className="weekly-team-card-title">
-                  <span>צוות עבודה</span>
+                  <span>
+                    צוות עבודה
+                    {group.pageCount > 1 && ` • עמוד ${group.pageNumber} מתוך ${group.pageCount}`}
+                  </span>
                   <h2>צוות {group.team}</h2>
                 </div>
                 <dl>
                   <div><dt>תאריך</dt><dd>{formatHebrewDate(group.date)}</dd></div>
-                  <div><dt>נקודות</dt><dd>{group.items.length}</dd></div>
-                  <div><dt>דגימות</dt><dd>{samplesFor(group.items)}</dd></div>
+                  <div><dt>נקודות</dt><dd>{group.allItems.length}</dd></div>
+                  <div><dt>דגימות</dt><dd>{samplesFor(group.allItems)}</dd></div>
                   <div>
                     <dt>אזורים</dt>
-                    <dd>{new Set(group.items.map((item) => item.sector.trim()).filter(Boolean)).size}</dd>
+                    <dd>{new Set(group.allItems.map((item) => item.sector.trim()).filter(Boolean)).size}</dd>
                   </div>
                 </dl>
               </section>
@@ -358,7 +397,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                 <tbody>
                   {group.items.map((item, index) => (
                     <tr key={item.id}>
-                      <td className="weekly-row-index">{index + 1}</td>
+                      <td className="weekly-row-index">{group.startIndex + index + 1}</td>
                       <td><strong>{item.plotCode || '—'}</strong></td>
                       <td>{item.farm || '—'}</td>
                       <td>
