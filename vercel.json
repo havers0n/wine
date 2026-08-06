@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/generate-pdf.ts": {
+      "includeFiles": "node_modules/@fontsource/assistant/files/*.woff2",
+      "maxDuration": 60
+    }
+  }
+}

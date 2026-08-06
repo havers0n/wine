@@ -505,6 +505,10 @@
   width: 29mm;
 }
 
+.weekly-col-source-note {
+  width: 30mm;
+}
+
 .weekly-code-cell {
   color: #475569;
   font-size: 9pt;
@@ -517,7 +521,7 @@
 }
 
 .weekly-col-samples {
-  width: 20mm;
+  width: 35mm;
   text-align: center !important;
 }
 
@@ -527,9 +531,52 @@
 
 .weekly-samples-cell {
   color: #0f172a;
+  text-align: center;
+}
+
+.weekly-row-flags {
+  display: flex;
+  min-height: 7mm;
+  align-items: center;
+  justify-content: center;
+  gap: 1mm;
+  white-space: nowrap;
+}
+
+.weekly-sample-value {
   font-size: 12pt;
   font-weight: 800;
-  text-align: center;
+}
+
+.weekly-color-check-badge,
+.weekly-sample-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8mm 1.5mm;
+  border: 1px solid;
+  border-radius: 2mm;
+  font-size: 7.5pt;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.weekly-color-check-badge {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.weekly-sample-count-badge {
+  border-color: #6ee7b7;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.weekly-row-flag-separator {
+  color: #64748b;
+  font-size: 9pt;
+  font-weight: 800;
 }
 
 .weekly-note-cell {

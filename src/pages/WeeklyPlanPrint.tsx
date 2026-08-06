@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
-import { ArrowRight, CalendarDays, Printer, Users } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { ArrowRight, CalendarDays, Check, Download, LoaderCircle, Users } from 'lucide-react';
 import { compareDisplayDates } from '../lib/dateUtils';
 import { usePlanning } from '../store/PlanningContext';
-import { PlanItem } from '../types';
+import type { PlanItem } from '../types';
 
 const ALL = 'all';
 const UNASSIGNED_TEAM = 'ללא שיוך';
@@ -31,6 +31,15 @@ function samplesFor(items: PlanItem[]): number {
   }, 0);
 }
 
+function requiresColorCheck(item: PlanItem): boolean {
+  return item.color.trim() === 'כן';
+}
+
+function plannedSampleCount(item: PlanItem): number | null {
+  const value = Number.parseInt(item.plannedSamples, 10);
+  return Number.isFinite(value) ? value : null;
+}
+
 function teamName(item: PlanItem): string {
   return item.team.trim() || UNASSIGNED_TEAM;
 }
@@ -42,6 +51,55 @@ function safeFilenamePart(value: string): string {
     .trim();
 
   return sanitized || 'team';
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('Unable to read image'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+interface SerializedReport {
+  html: string;
+  assets: Record<string, string>;
+}
+
+async function serializeReport(report: HTMLElement): Promise<SerializedReport> {
+  const clone = report.cloneNode(true) as HTMLElement;
+  const sourceImages = Array.from(report.querySelectorAll<HTMLImageElement>('img'));
+  const clonedImages = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
+  const uniqueSources = Array.from(new Set(
+    sourceImages.map((image) => image.currentSrc || image.src).filter(Boolean),
+  ));
+  const sourceKeys = new Map(uniqueSources.map((source, index) => [source, `image-${index}`]));
+  const assets = Object.fromEntries(await Promise.all(uniqueSources.map(async (source) => {
+    const key = sourceKeys.get(source);
+    if (!key) throw new Error('Unable to identify report image');
+    const response = await fetch(source, { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(`Unable to load report image: ${response.status}`);
+    return [key, await blobToDataUrl(await response.blob())] as const;
+  })));
+
+  clonedImages.forEach((image, index) => {
+    const source = sourceImages[index]?.currentSrc || sourceImages[index]?.src;
+    const key = source ? sourceKeys.get(source) : undefined;
+    if (key) image.setAttribute('src', `report-asset:${key}`);
+  });
+
+  return { html: clone.outerHTML, assets };
+}
+
+function documentCssText(): string {
+  return Array.from(document.styleSheets).flatMap((styleSheet) => {
+    try {
+      return Array.from(styleSheet.cssRules, (rule) => rule.cssText);
+    } catch {
+      return [];
+    }
+  }).join('\n');
 }
 
 function parseDisplayDate(value: string): Date | null {
@@ -110,9 +168,11 @@ function PageFooter({ generatedAt, pageNumber, pageCount }: { generatedAt: Date;
 
 export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
   const { planItems } = usePlanning();
+  const documentRef = useRef<HTMLDivElement>(null);
   const [dateFilter, setDateFilter] = useState(ALL);
   const [teamFilter, setTeamFilter] = useState(ALL);
   const [generatedAt] = useState(() => new Date());
+  const [exportState, setExportState] = useState<'idle' | 'generating' | 'complete' | 'error'>('idle');
 
   const dates = useMemo(() => (
     Array.from(new Set(planItems.map((item) => item.date).filter(Boolean))).sort(compareDisplayDates)
@@ -180,8 +240,8 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
   const reportTitle = visibleTeams.length === 1
     ? `תוכנית עבודה - צוות ${reportRegion}`
     : `תוכנית עבודה - ${reportRegion}`;
-  const repeatedSamplePoints = visibleItems.filter((item) => Number.parseInt(item.plannedSamples, 10) > 1).length;
-  const notesCount = visibleItems.filter((item) => item.coordinatorNote?.trim()).length;
+  const repeatedSamplePoints = visibleItems.filter((item) => (plannedSampleCount(item) ?? 0) > 1).length;
+  const colorCheckPoints = visibleItems.filter(requiresColorCheck).length;
   const averagePointsPerDay = visibleDates.length > 0 ? visibleItems.length / visibleDates.length : 0;
   const busiestDate = visibleDates.reduce((busiest, date) => {
     const count = visibleItems.filter((item) => item.date === date).length;
@@ -189,14 +249,50 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
   }, { date: '', count: 0 });
   const totalPages = detailPages.length + 1;
 
-  const handlePrint = async () => {
-    if (visibleItems.length === 0) return;
-    await document.fonts.ready;
-    const originalTitle = document.title;
-    const datePart = (visibleDates[0] ?? 'weekly-plan').replaceAll('.', '-');
-    document.title = `${safeFilenamePart(reportRegion)}-${datePart}`;
-    window.addEventListener('afterprint', () => { document.title = originalTitle; }, { once: true });
-    window.print();
+  const handleDownload = async () => {
+    if (!documentRef.current || visibleItems.length === 0 || exportState === 'generating') return;
+
+    const firstDate = (visibleDates[0] ?? 'weekly-plan').replaceAll('.', '-');
+    const lastDate = visibleDates.at(-1)?.replaceAll('.', '-') ?? firstDate;
+    const datePart = firstDate === lastDate ? firstDate : `${firstDate}_${lastDate}`;
+    const selectedTeam = teamFilter === ALL ? reportRegion : teamFilter;
+    const filename = `תוכנית-עבודה-${safeFilenamePart(selectedTeam)}-${datePart}.pdf`;
+
+    setExportState('generating');
+    try {
+      await document.fonts.ready;
+      const report = await serializeReport(documentRef.current);
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          html: report.html,
+          assets: report.assets,
+          css: documentCssText(),
+          filename,
+        }),
+      });
+
+      if (!response.ok) {
+        const details = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(details?.error || `PDF export failed (${response.status})`);
+      }
+
+      const downloadUrl = URL.createObjectURL(await response.blob());
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = filename;
+      downloadLink.style.display = 'none';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 10_000);
+      setExportState('complete');
+      window.setTimeout(() => setExportState('idle'), 4_000);
+    } catch (error) {
+      console.error('Unable to download weekly plan PDF', error);
+      setExportState('error');
+    }
   };
 
   return (
@@ -208,7 +304,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
           </button>
           <div>
             <h2 className="font-black text-slate-900">תצוגה מקדימה להדפסה</h2>
-            <p className="text-xs text-slate-500">הדפסה או שמירה כ-PDF עם טקסט חד, ניתן לחיפוש ולהעתקה.</p>
+            <p className="text-xs text-slate-500">לחיצה אחת מורידה PDF חד עם שם הצוות שנבחר.</p>
           </div>
         </div>
 
@@ -227,21 +323,33 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
               {teams.map((team) => <option key={team} value={team}>{team}</option>)}
             </select>
           </label>
-          <button
-            type="button"
-            onClick={() => void handlePrint()}
-            disabled={visibleItems.length === 0}
-            className="weekly-print-primary-button"
-          >
-            <Printer className="w-4 h-4" /> הדפסה / שמירה כ-PDF
-          </button>
+            <button
+              type="button"
+              onClick={() => void handleDownload()}
+              disabled={visibleItems.length === 0 || exportState === 'generating'}
+              className="weekly-print-primary-button"
+            >
+              {exportState === 'generating'
+                ? <LoaderCircle className="w-4 h-4 animate-spin" />
+                : exportState === 'complete'
+                  ? <Check className="w-4 h-4" />
+                  : <Download className="w-4 h-4" />}
+              {exportState === 'generating'
+                ? 'מכין PDF…'
+                : exportState === 'complete'
+                  ? 'ההורדה התחילה'
+                  : 'הורדת PDF'}
+            </button>
+            {exportState === 'error' && (
+              <p className="weekly-print-export-error" role="alert">לא הצלחנו להכין את הקובץ. נסו שוב.</p>
+            )}
         </div>
       </div>
 
       {visibleItems.length === 0 ? (
         <div className="weekly-print-empty print-hidden">אין נתונים התואמים לסינון שנבחר.</div>
       ) : (
-        <div className="weekly-print-document">
+        <div ref={documentRef} className="weekly-print-document">
           <section className="weekly-print-page weekly-summary-page">
             <header className="weekly-summary-header">
               <div>
@@ -292,7 +400,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                 </div>
                 <div className="weekly-operational-highlights">
                   <div><span>חלקות עם מספר דגימות</span><strong>{repeatedSamplePoints}</strong></div>
-                  <div><span>הערות לביצוע</span><strong>{notesCount}</strong></div>
+                  <div><span>נקודות עם בדיקת צבע</span><strong>{colorCheckPoints}</strong></div>
                   <div><span>ימי עבודה</span><strong>{visibleDates.length}</strong></div>
                   <div><span>צוותים בדוח</span><strong>{visibleTeams.length}</strong></div>
                 </div>
@@ -325,8 +433,8 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                     <div><dt>נקודות</dt><dd>{group.allItems.length}</dd></div>
                     <div><dt>דגימות</dt><dd>{samplesFor(group.allItems)}</dd></div>
                     <div>
-                      <dt>אזורים</dt>
-                      <dd>{new Set(group.allItems.map((item) => item.sector.trim()).filter(Boolean)).size}</dd>
+                      <dt>נקודות עם בדיקת צבע</dt>
+                      <dd>{group.allItems.filter(requiresColorCheck).length}</dd>
                     </div>
                   </dl>
                 </section>
@@ -337,27 +445,41 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                       <th className="weekly-col-index">סדר ביצוע</th>
                       <th className="weekly-col-location">משק / חלקה</th>
                       <th className="weekly-col-code">קוד חלקה</th>
-                      <th>אזור</th>
+                      <th className="weekly-col-source-note">פרטים נוספים</th>
                       <th>זן</th>
                       <th className="weekly-col-samples">מס׳ דגימות</th>
                       {showNotes && <th className="weekly-col-note">הערות לביצוע</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {group.items.map((item, index) => (
-                      <tr key={item.id}>
-                        <td className="weekly-row-index">{group.startIndex + index + 1}</td>
-                        <td>
-                          <strong>{item.plotName}</strong>
-                          {(item.farm || item.vineyard) && <small>{[item.farm, item.vineyard].filter(Boolean).join(' • ')}</small>}
-                        </td>
-                        <td className="weekly-code-cell">{item.plotCode || '—'}</td>
-                        <td>{item.sector || '—'}</td>
-                        <td>{item.variety || '—'}</td>
-                        <td className="weekly-samples-cell">{item.plannedSamples || '—'}</td>
-                        {showNotes && <td className="weekly-note-cell">{item.coordinatorNote || ''}</td>}
-                      </tr>
-                    ))}
+                    {group.items.map((item, index) => {
+                      const sampleCount = plannedSampleCount(item);
+                      const hasMultipleSamples = (sampleCount ?? 0) > 1;
+                      const hasColorCheck = requiresColorCheck(item);
+
+                      return (
+                        <tr key={item.id}>
+                          <td className="weekly-row-index">{group.startIndex + index + 1}</td>
+                          <td>
+                            <strong>{item.plotName}</strong>
+                            {(item.farm || item.vineyard) && <small>{[item.farm, item.vineyard].filter(Boolean).join(' • ')}</small>}
+                          </td>
+                          <td className="weekly-code-cell">{item.plotCode || '—'}</td>
+                          <td>{item.sector || '—'}</td>
+                          <td>{item.variety || '—'}</td>
+                          <td className="weekly-samples-cell">
+                            <div className="weekly-row-flags">
+                              {hasColorCheck && <span className="weekly-color-check-badge">בדיקת צבע</span>}
+                              {hasColorCheck && hasMultipleSamples && <span className="weekly-row-flag-separator">·</span>}
+                              {hasMultipleSamples
+                                ? <span className="weekly-sample-count-badge">{sampleCount} דגימות</span>
+                                : <span className="weekly-sample-value">{item.plannedSamples || '—'}</span>}
+                            </div>
+                          </td>
+                          {showNotes && <td className="weekly-note-cell">{item.coordinatorNote || ''}</td>}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 

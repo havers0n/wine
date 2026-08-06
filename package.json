@@ -11,9 +11,12 @@
     "check": "npm run typecheck && npm run build"
   },
   "dependencies": {
+    "@fontsource/assistant": "^5.2.8",
+    "@sparticuz/chromium": "^143.0.0",
     "@supabase/supabase-js": "2.111.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.546.0",
+    "puppeteer-core": "^24.31.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "tailwind-merge": "^3.6.0",
