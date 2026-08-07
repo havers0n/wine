@@ -544,12 +544,16 @@
 }
 
 .weekly-sample-value {
-  font-size: 12pt;
-  font-weight: 800;
+  font-size: 11.5pt;
+  font-weight: 700;
 }
 
-.weekly-color-check-badge,
-.weekly-sample-count-badge {
+.weekly-sample-value-emphasized {
+  font-size: 12pt;
+  font-weight: 900;
+}
+
+.weekly-color-check-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -565,12 +569,6 @@
   border-color: #f59e0b;
   background: #fffbeb;
   color: #92400e;
-}
-
-.weekly-sample-count-badge {
-  border-color: #6ee7b7;
-  background: #ecfdf5;
-  color: #065f46;
 }
 
 .weekly-row-flag-separator {

@@ -471,9 +471,9 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                             <div className="weekly-row-flags">
                               {hasColorCheck && <span className="weekly-color-check-badge">בדיקת צבע</span>}
                               {hasColorCheck && hasMultipleSamples && <span className="weekly-row-flag-separator">·</span>}
-                              {hasMultipleSamples
-                                ? <span className="weekly-sample-count-badge">{sampleCount} דגימות</span>
-                                : <span className="weekly-sample-value">{item.plannedSamples || '—'}</span>}
+                              <span className={hasMultipleSamples ? 'weekly-sample-value weekly-sample-value-emphasized' : 'weekly-sample-value'}>
+                                {sampleCount ?? (item.plannedSamples || '—')}
+                              </span>
                             </div>
                           </td>
                           {showNotes && <td className="weekly-note-cell">{item.coordinatorNote || ''}</td>}
