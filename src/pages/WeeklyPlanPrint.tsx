@@ -629,7 +629,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                   <div><h2>דגשים לביצוע</h2><p>חריגים ונתונים שכדאי להכיר לפני היציאה</p></div>
                 </div>
                 <div className="weekly-operational-highlights">
-                  <div><span>חלקות עם מספר דגימות</span><strong>{repeatedSamplePoints}</strong></div>
+                  <div><span>נקודות עם יותר מדגימה אחת</span><strong>{repeatedSamplePoints}</strong></div>
                   <div><span>נקודות עם בדיקת צבע</span><strong>{colorCheckPoints}</strong></div>
                   <div><span>ימי עבודה</span><strong>{visibleDates.length}</strong></div>
                   <div><span>צוותים בדוח</span><strong>{visibleTeams.length}</strong></div>
@@ -686,7 +686,6 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                 <div><strong>{visibleItems.length}</strong><span>נקודות עבודה</span></div>
                 <div><strong>{samplesFor(visibleItems)}</strong><span>דגימות</span></div>
                 <div><strong>{visibleDates.length}</strong><span>ימי עבודה</span></div>
-                <div><strong>{visibleTeams.length}</strong><span>צוותים</span></div>
               </div>
 
               {unassignedCount > 0 && (
@@ -708,7 +707,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
 
               <section className="weekly-mobile-highlights">
                 <h2>דגשים לביצוע</h2>
-                <div><span>חלקות עם מספר דגימות</span><strong>{repeatedSamplePoints}</strong></div>
+                <div><span>נקודות עם יותר מדגימה אחת</span><strong>{repeatedSamplePoints}</strong></div>
                 <div><span>נקודות עם בדיקת צבע</span><strong>{colorCheckPoints}</strong></div>
               </section>
 
