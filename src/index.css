@@ -92,6 +92,28 @@
   overflow-x: auto;
 }
 
+.weekly-pagination-measure {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 277mm;
+  height: 0;
+  overflow: visible;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.weekly-detail-measure-page {
+  width: 277mm;
+  height: 190mm;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .weekly-print-page {
   box-sizing: border-box;
   position: relative;
@@ -459,9 +481,15 @@
   font-size: 9.5pt;
 }
 
-.weekly-detail-table th,
-.weekly-detail-table td {
+.weekly-detail-table th {
   padding: 1.4mm 2mm;
+  border: 1px solid #dbe5df;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.weekly-detail-table td {
+  padding: 1.25mm 2mm;
   border: 1px solid #dbe5df;
   vertical-align: top;
   overflow-wrap: anywhere;

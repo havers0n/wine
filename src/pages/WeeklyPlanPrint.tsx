@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, CalendarDays, Check, Download, LoaderCircle, Users } from 'lucide-react';
 import { compareDisplayDates } from '../lib/dateUtils';
 import { usePlanning } from '../store/PlanningContext';
@@ -6,7 +6,7 @@ import type { PlanItem } from '../types';
 
 const ALL = 'all';
 const UNASSIGNED_TEAM = 'ללא שיוך';
-const MAX_DETAIL_ROWS_PER_PAGE = 8;
+const DETAIL_FOOTER_CLEARANCE_MM = 4;
 
 interface WeeklyPlanPrintProps {
   onBack: () => void;
@@ -22,6 +22,41 @@ interface DetailPage extends DetailGroup {
   allItems: PlanItem[];
   startIndex: number;
   pageNumber: number;
+}
+
+function millimetersToPixels(value: number): number {
+  return value * (96 / 25.4);
+}
+
+function paginateDetailGroup(group: DetailGroup, rowHeights: number[], availableHeight: number): DetailPage[] {
+  const pages: DetailPage[] = [];
+  let pageItems: PlanItem[] = [];
+  let pageHeight = 0;
+  let startIndex = 0;
+
+  const pushPage = () => {
+    if (pageItems.length === 0) return;
+    pages.push({
+      ...group,
+      items: pageItems,
+      allItems: group.items,
+      startIndex,
+      pageNumber: pages.length + 1,
+    });
+    startIndex += pageItems.length;
+    pageItems = [];
+    pageHeight = 0;
+  };
+
+  group.items.forEach((item, index) => {
+    const rowHeight = rowHeights[index] ?? availableHeight;
+    if (pageItems.length > 0 && pageHeight + rowHeight > availableHeight + 0.5) pushPage();
+    pageItems.push(item);
+    pageHeight += rowHeight;
+  });
+  pushPage();
+
+  return pages;
 }
 
 function samplesFor(items: PlanItem[]): number {
@@ -166,12 +201,105 @@ function PageFooter({ generatedAt, pageNumber, pageCount }: { generatedAt: Date;
   );
 }
 
+function DetailPageContents({
+  group,
+  periodLabel,
+  generatedAt,
+  reportPageNumber,
+  reportPageCount,
+}: {
+  group: DetailPage;
+  periodLabel: string;
+  generatedAt: Date;
+  reportPageNumber: number;
+  reportPageCount: number;
+}) {
+  const showNotes = group.items.some((item) => item.coordinatorNote?.trim());
+
+  return (
+    <>
+      <header className="weekly-detail-header">
+        <div>
+          <p className="weekly-print-eyebrow">MAGOF PLANNER</p>
+          <h1>תוכנית עבודה - צוות {group.team}</h1>
+          <p>{periodLabel}</p>
+        </div>
+        <PrintLogo />
+      </header>
+
+      <section className="weekly-team-card" aria-label={`סיכום צוות ${group.team}`}>
+        <div className="weekly-team-card-title">
+          <span>צוות עבודה</span>
+          <h2>צוות {group.team}</h2>
+        </div>
+        <dl>
+          <div><dt>תאריך</dt><dd>{formatHebrewDate(group.date)}</dd></div>
+          <div><dt>נקודות</dt><dd>{group.allItems.length}</dd></div>
+          <div><dt>דגימות</dt><dd>{samplesFor(group.allItems)}</dd></div>
+          <div>
+            <dt>נקודות עם בדיקת צבע</dt>
+            <dd>{group.allItems.filter(requiresColorCheck).length}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <table className="weekly-detail-table">
+        <thead>
+          <tr>
+            <th className="weekly-col-index">סדר ביצוע</th>
+            <th className="weekly-col-location">משק / חלקה</th>
+            <th className="weekly-col-code">קוד חלקה</th>
+            <th className="weekly-col-source-note">פרטים נוספים</th>
+            <th>זן</th>
+            <th className="weekly-col-samples">מס׳ דגימות</th>
+            {showNotes && <th className="weekly-col-note">הערות לביצוע</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {group.items.map((item, index) => {
+            const sampleCount = plannedSampleCount(item);
+            const hasMultipleSamples = (sampleCount ?? 0) > 1;
+            const hasColorCheck = requiresColorCheck(item);
+
+            return (
+              <tr key={item.id}>
+                <td className="weekly-row-index">{group.startIndex + index + 1}</td>
+                <td>
+                  <strong>{item.plotName}</strong>
+                  {(item.farm || item.vineyard) && <small>{[item.farm, item.vineyard].filter(Boolean).join(' • ')}</small>}
+                </td>
+                <td className="weekly-code-cell">{item.plotCode || '—'}</td>
+                <td>{item.sector || '—'}</td>
+                <td>{item.variety || '—'}</td>
+                <td className="weekly-samples-cell">
+                  <div className="weekly-row-flags">
+                    {hasColorCheck && <span className="weekly-color-check-badge">בדיקת צבע</span>}
+                    {hasColorCheck && hasMultipleSamples && <span className="weekly-row-flag-separator">·</span>}
+                    <span className={hasMultipleSamples ? 'weekly-sample-value weekly-sample-value-emphasized' : 'weekly-sample-value'}>
+                      {sampleCount ?? (item.plannedSamples || '—')}
+                    </span>
+                  </div>
+                </td>
+                {showNotes && <td className="weekly-note-cell">{item.coordinatorNote || ''}</td>}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <PageFooter generatedAt={generatedAt} pageNumber={reportPageNumber} pageCount={reportPageCount} />
+    </>
+  );
+}
+
 export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
   const { planItems } = usePlanning();
   const documentRef = useRef<HTMLDivElement>(null);
+  const paginationMeasureRef = useRef<HTMLDivElement>(null);
   const [dateFilter, setDateFilter] = useState(ALL);
   const [teamFilter, setTeamFilter] = useState(ALL);
   const [generatedAt] = useState(() => new Date());
+  const [detailPages, setDetailPages] = useState<DetailPage[]>([]);
   const [exportState, setExportState] = useState<'idle' | 'generating' | 'complete' | 'error'>('idle');
 
   const dates = useMemo(() => (
@@ -210,26 +338,53 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
     return groups;
   }, [visibleDates, visibleItems, visibleTeams]);
 
-  const detailPages = useMemo<DetailPage[]>(() => detailGroups.flatMap((group) => {
-    const pageCount = Math.ceil(group.items.length / MAX_DETAIL_ROWS_PER_PAGE);
-    const basePageSize = Math.floor(group.items.length / pageCount);
-    const fullerPageCount = group.items.length % pageCount;
-    let startIndex = 0;
+  useLayoutEffect(() => {
+    const measurementRoot = paginationMeasureRef.current;
+    if (!measurementRoot) return undefined;
 
-    return Array.from({ length: pageCount }, (_, pageIndex) => {
-      const pageSize = basePageSize + (pageIndex < fullerPageCount ? 1 : 0);
-      const pageStartIndex = startIndex;
-      startIndex += pageSize;
-      return {
-        date: group.date,
-        team: group.team,
-        items: group.items.slice(pageStartIndex, pageStartIndex + pageSize),
-        allItems: group.items,
-        startIndex: pageStartIndex,
-        pageNumber: pageIndex + 1,
-      };
-    });
-  }), [detailGroups]);
+    let animationFrame = 0;
+    let cancelled = false;
+    const updatePagination = () => {
+      if (cancelled) return;
+      const nextPages = detailGroups.flatMap((group, groupIndex) => {
+        const page = measurementRoot.querySelector<HTMLElement>(`[data-detail-group="${groupIndex}"]`);
+        const tableBody = page?.querySelector<HTMLTableSectionElement>('tbody');
+        const footer = page?.querySelector<HTMLElement>('.weekly-print-footer');
+        if (!page || !tableBody || !footer) return [];
+
+        const pageRect = page.getBoundingClientRect();
+        const bodyRect = tableBody.getBoundingClientRect();
+        const availableHeight = pageRect.bottom
+          - bodyRect.top
+          - footer.getBoundingClientRect().height
+          - millimetersToPixels(DETAIL_FOOTER_CLEARANCE_MM);
+        const rowHeights = Array.from(tableBody.rows, (row) => row.getBoundingClientRect().height);
+        return paginateDetailGroup(group, rowHeights, Math.max(1, availableHeight));
+      });
+
+      setDetailPages((currentPages) => {
+        const currentSignature = currentPages.map((page) => `${page.date}|${page.team}|${page.startIndex}|${page.items.length}`).join(';');
+        const nextSignature = nextPages.map((page) => `${page.date}|${page.team}|${page.startIndex}|${page.items.length}`).join(';');
+        return currentSignature === nextSignature ? currentPages : nextPages;
+      });
+    };
+    const schedulePagination = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(updatePagination);
+    };
+
+    updatePagination();
+    void document.fonts.ready.then(schedulePagination);
+    const resizeObserver = new ResizeObserver(schedulePagination);
+    measurementRoot.querySelectorAll<HTMLElement>('.weekly-detail-measure-page, tbody tr')
+      .forEach((element) => resizeObserver.observe(element));
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver.disconnect();
+    };
+  }, [detailGroups]);
 
   const unassignedCount = visibleItems.filter((item) => !item.team.trim()).length;
   const maxDayItems = Math.max(1, ...visibleDates.map((date) => (
@@ -410,83 +565,35 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
             <PageFooter generatedAt={generatedAt} pageNumber={1} pageCount={totalPages} />
           </section>
 
-          {detailPages.map((group, detailPageIndex) => {
-            const showNotes = group.items.some((item) => item.coordinatorNote?.trim());
-            return (
-              <section key={`${group.date}-${group.team}-${group.pageNumber}`} className="weekly-print-page weekly-detail-page">
-                <header className="weekly-detail-header">
-                  <div>
-                    <p className="weekly-print-eyebrow">MAGOF PLANNER</p>
-                    <h1>תוכנית עבודה - צוות {group.team}</h1>
-                    <p>{periodLabel}</p>
-                  </div>
-                  <PrintLogo />
-                </header>
-
-                <section className="weekly-team-card" aria-label={`סיכום צוות ${group.team}`}>
-                  <div className="weekly-team-card-title">
-                    <span>צוות עבודה</span>
-                    <h2>צוות {group.team}</h2>
-                  </div>
-                  <dl>
-                    <div><dt>תאריך</dt><dd>{formatHebrewDate(group.date)}</dd></div>
-                    <div><dt>נקודות</dt><dd>{group.allItems.length}</dd></div>
-                    <div><dt>דגימות</dt><dd>{samplesFor(group.allItems)}</dd></div>
-                    <div>
-                      <dt>נקודות עם בדיקת צבע</dt>
-                      <dd>{group.allItems.filter(requiresColorCheck).length}</dd>
-                    </div>
-                  </dl>
-                </section>
-
-                <table className="weekly-detail-table">
-                  <thead>
-                    <tr>
-                      <th className="weekly-col-index">סדר ביצוע</th>
-                      <th className="weekly-col-location">משק / חלקה</th>
-                      <th className="weekly-col-code">קוד חלקה</th>
-                      <th className="weekly-col-source-note">פרטים נוספים</th>
-                      <th>זן</th>
-                      <th className="weekly-col-samples">מס׳ דגימות</th>
-                      {showNotes && <th className="weekly-col-note">הערות לביצוע</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.items.map((item, index) => {
-                      const sampleCount = plannedSampleCount(item);
-                      const hasMultipleSamples = (sampleCount ?? 0) > 1;
-                      const hasColorCheck = requiresColorCheck(item);
-
-                      return (
-                        <tr key={item.id}>
-                          <td className="weekly-row-index">{group.startIndex + index + 1}</td>
-                          <td>
-                            <strong>{item.plotName}</strong>
-                            {(item.farm || item.vineyard) && <small>{[item.farm, item.vineyard].filter(Boolean).join(' • ')}</small>}
-                          </td>
-                          <td className="weekly-code-cell">{item.plotCode || '—'}</td>
-                          <td>{item.sector || '—'}</td>
-                          <td>{item.variety || '—'}</td>
-                          <td className="weekly-samples-cell">
-                            <div className="weekly-row-flags">
-                              {hasColorCheck && <span className="weekly-color-check-badge">בדיקת צבע</span>}
-                              {hasColorCheck && hasMultipleSamples && <span className="weekly-row-flag-separator">·</span>}
-                              <span className={hasMultipleSamples ? 'weekly-sample-value weekly-sample-value-emphasized' : 'weekly-sample-value'}>
-                                {sampleCount ?? (item.plannedSamples || '—')}
-                              </span>
-                            </div>
-                          </td>
-                          {showNotes && <td className="weekly-note-cell">{item.coordinatorNote || ''}</td>}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                <PageFooter generatedAt={generatedAt} pageNumber={detailPageIndex + 2} pageCount={totalPages} />
+          <div ref={paginationMeasureRef} className="weekly-pagination-measure print-hidden" aria-hidden="true">
+            {detailGroups.map((group, groupIndex) => (
+              <section
+                key={`${group.date}-${group.team}-measure`}
+                className="weekly-print-page weekly-detail-page weekly-detail-measure-page"
+                data-detail-group={groupIndex}
+              >
+                <DetailPageContents
+                  group={{ ...group, allItems: group.items, startIndex: 0, pageNumber: 1 }}
+                  periodLabel={periodLabel}
+                  generatedAt={generatedAt}
+                  reportPageNumber={1}
+                  reportPageCount={1}
+                />
               </section>
-            );
-          })}
+            ))}
+          </div>
+
+          {detailPages.map((group, detailPageIndex) => (
+            <section key={`${group.date}-${group.team}-${group.pageNumber}`} className="weekly-print-page weekly-detail-page">
+              <DetailPageContents
+                group={group}
+                periodLabel={periodLabel}
+                generatedAt={generatedAt}
+                reportPageNumber={detailPageIndex + 2}
+                reportPageCount={totalPages}
+              />
+            </section>
+          ))}
         </div>
       )}
     </div>
