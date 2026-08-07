@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, CalendarDays, Check, Download, LoaderCircle, Users } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, Download, LoaderCircle, Monitor, Smartphone, Users } from 'lucide-react';
 import { compareDisplayDates } from '../lib/dateUtils';
 import { usePlanning } from '../store/PlanningContext';
 import type { PlanItem } from '../types';
@@ -7,6 +7,7 @@ import type { PlanItem } from '../types';
 const ALL = 'all';
 const UNASSIGNED_TEAM = 'ללא שיוך';
 const DETAIL_FOOTER_CLEARANCE_MM = 4;
+type ReportVariant = 'desktop' | 'mobile';
 
 interface WeeklyPlanPrintProps {
   onBack: () => void;
@@ -201,6 +202,54 @@ function PageFooter({ generatedAt, pageNumber, pageCount }: { generatedAt: Date;
   );
 }
 
+function MobileFooter({ generatedAt }: { generatedAt: Date }) {
+  return <footer className="weekly-mobile-footer">MAGOF Planner • הופק בתאריך {generationTime(generatedAt)}</footer>;
+}
+
+function MobilePlanGroup({ group, generatedAt }: { group: DetailGroup; generatedAt: Date }) {
+  return (
+    <section className="weekly-mobile-page weekly-mobile-group">
+      <header className="weekly-mobile-group-header">
+        <div>
+          <p className="weekly-print-eyebrow">צוות {group.team}</p>
+          <h1>{formatHebrewDate(group.date)}</h1>
+          <p>{group.items.length} נקודות • {samplesFor(group.items)} דגימות</p>
+        </div>
+        <PrintLogo />
+      </header>
+
+      <div className="weekly-mobile-cards">
+        {group.items.map((item, index) => {
+          const sampleCount = plannedSampleCount(item);
+          return (
+            <article key={item.id} className="weekly-mobile-card">
+              <div className="weekly-mobile-card-heading">
+                <span>{index + 1}</span>
+                <div>
+                  <h2>{item.plotName}</h2>
+                  {(item.farm || item.vineyard) && <p>{[item.farm, item.vineyard].filter(Boolean).join(' • ')}</p>}
+                </div>
+              </div>
+              <dl>
+                <div><dt>קוד חלקה</dt><dd>{item.plotCode || '—'}</dd></div>
+                <div><dt>פרטים נוספים</dt><dd>{item.sector || '—'}</dd></div>
+                <div><dt>זן</dt><dd>{item.variety || '—'}</dd></div>
+                <div><dt>דגימות</dt><dd>{sampleCount ?? (item.plannedSamples || '—')}</dd></div>
+              </dl>
+              <div className="weekly-mobile-card-flags">
+                {requiresColorCheck(item) && <span>בדיקת צבע</span>}
+                {item.coordinatorNote?.trim() && <p><strong>הערה:</strong> {item.coordinatorNote}</p>}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <MobileFooter generatedAt={generatedAt} />
+    </section>
+  );
+}
+
 function DetailPageContents({
   group,
   periodLabel,
@@ -298,6 +347,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
   const paginationMeasureRef = useRef<HTMLDivElement>(null);
   const [dateFilter, setDateFilter] = useState(ALL);
   const [teamFilter, setTeamFilter] = useState(ALL);
+  const [reportVariant, setReportVariant] = useState<ReportVariant>('desktop');
   const [generatedAt] = useState(() => new Date());
   const [detailPages, setDetailPages] = useState<DetailPage[]>([]);
   const [exportState, setExportState] = useState<'idle' | 'generating' | 'complete' | 'error'>('idle');
@@ -384,7 +434,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
       window.cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
     };
-  }, [detailGroups]);
+  }, [detailGroups, reportVariant]);
 
   const unassignedCount = visibleItems.filter((item) => !item.team.trim()).length;
   const maxDayItems = Math.max(1, ...visibleDates.map((date) => (
@@ -411,7 +461,8 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
     const lastDate = visibleDates.at(-1)?.replaceAll('.', '-') ?? firstDate;
     const datePart = firstDate === lastDate ? firstDate : `${firstDate}_${lastDate}`;
     const selectedTeam = teamFilter === ALL ? reportRegion : teamFilter;
-    const filename = `תוכנית-עבודה-${safeFilenamePart(selectedTeam)}-${datePart}.pdf`;
+    const variantLabel = reportVariant === 'mobile' ? '-טלפון' : '';
+    const filename = `תוכנית-עבודה-${safeFilenamePart(selectedTeam)}-${datePart}${variantLabel}.pdf`;
 
     setExportState('generating');
     try {
@@ -425,6 +476,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
           assets: report.assets,
           css: documentCssText(),
           filename,
+          variant: reportVariant,
         }),
       });
 
@@ -459,7 +511,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
           </button>
           <div>
             <h2 className="font-black text-slate-900">תצוגה מקדימה להדפסה</h2>
-            <p className="text-xs text-slate-500">לחיצה אחת מורידה PDF חד עם שם הצוות שנבחר.</p>
+            <p className="text-xs text-slate-500">בחרו גרסה למסך רחב או גרסה נוחה לקריאה בטלפון.</p>
           </div>
         </div>
 
@@ -478,6 +530,27 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
               {teams.map((team) => <option key={team} value={team}>{team}</option>)}
             </select>
           </label>
+          <fieldset className="weekly-variant-picker">
+            <legend>גרסה</legend>
+            <div>
+              <button
+                type="button"
+                className={reportVariant === 'desktop' ? 'is-active' : ''}
+                onClick={() => setReportVariant('desktop')}
+                aria-pressed={reportVariant === 'desktop'}
+              >
+                <Monitor /> מחשב / הדפסה
+              </button>
+              <button
+                type="button"
+                className={reportVariant === 'mobile' ? 'is-active' : ''}
+                onClick={() => setReportVariant('mobile')}
+                aria-pressed={reportVariant === 'mobile'}
+              >
+                <Smartphone /> טלפון
+              </button>
+            </div>
+          </fieldset>
             <button
               type="button"
               onClick={() => void handleDownload()}
@@ -504,7 +577,9 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
       {visibleItems.length === 0 ? (
         <div className="weekly-print-empty print-hidden">אין נתונים התואמים לסינון שנבחר.</div>
       ) : (
-        <div ref={documentRef} className="weekly-print-document">
+        <div ref={documentRef} className={`weekly-print-document weekly-print-document-${reportVariant}`}>
+          {reportVariant === 'desktop' ? (
+          <>
           <section className="weekly-print-page weekly-summary-page">
             <header className="weekly-summary-header">
               <div>
@@ -594,6 +669,57 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
               />
             </section>
           ))}
+          </>
+          ) : (
+          <>
+            <section className="weekly-mobile-page weekly-mobile-summary-page">
+              <header className="weekly-mobile-summary-header">
+                <div>
+                  <p className="weekly-print-eyebrow">MAGOF PLANNER</p>
+                  <h1>{reportTitle}</h1>
+                  <p>{periodLabel}</p>
+                </div>
+                <PrintLogo />
+              </header>
+
+              <div className="weekly-mobile-kpis">
+                <div><strong>{visibleItems.length}</strong><span>נקודות עבודה</span></div>
+                <div><strong>{samplesFor(visibleItems)}</strong><span>דגימות</span></div>
+                <div><strong>{visibleDates.length}</strong><span>ימי עבודה</span></div>
+                <div><strong>{visibleTeams.length}</strong><span>צוותים</span></div>
+              </div>
+
+              {unassignedCount > 0 && (
+                <div className="weekly-unassigned-warning"><strong>{unassignedCount}</strong> נקודות ללא שיוך לצוות</div>
+              )}
+
+              <section className="weekly-mobile-days">
+                <h2>חלוקת העבודה לפי ימים</h2>
+                {visibleDates.map((date) => {
+                  const dayItems = visibleItems.filter((item) => item.date === date);
+                  return (
+                    <div key={date}>
+                      <span>{formatHebrewDate(date)}</span>
+                      <strong>{dayItems.length} נקודות • {samplesFor(dayItems)} דגימות</strong>
+                    </div>
+                  );
+                })}
+              </section>
+
+              <section className="weekly-mobile-highlights">
+                <h2>דגשים לביצוע</h2>
+                <div><span>חלקות עם מספר דגימות</span><strong>{repeatedSamplePoints}</strong></div>
+                <div><span>נקודות עם בדיקת צבע</span><strong>{colorCheckPoints}</strong></div>
+              </section>
+
+              <MobileFooter generatedAt={generatedAt} />
+            </section>
+
+            {detailGroups.map((group) => (
+              <MobilePlanGroup key={`${group.date}-${group.team}`} group={group} generatedAt={generatedAt} />
+            ))}
+          </>
+          )}
         </div>
       )}
     </div>

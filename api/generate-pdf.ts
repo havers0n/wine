@@ -14,6 +14,7 @@ interface PdfRequest {
   css?: unknown;
   filename?: unknown;
   assets?: unknown;
+  variant?: unknown;
 }
 
 type ApiRequest = IncomingMessage & { body?: unknown };
@@ -121,6 +122,7 @@ export default async function handler(request: ApiRequest, response: ServerRespo
     const html = reportHtmlWithAssets(payload.html, payload.assets);
     const css = typeof payload.css === 'string' ? payload.css.slice(0, 1_000_000) : '';
     const filename = safeFilename(payload.filename);
+    const variant = payload.variant === 'mobile' ? 'mobile' : 'desktop';
     const isVercel = Boolean(process.env.VERCEL);
 
     browser = await puppeteer.launch({
@@ -144,6 +146,7 @@ export default async function handler(request: ApiRequest, response: ServerRespo
           <meta charset="utf-8" />
           <style>${css}</style>
           <style>${await fontFaceCss()}</style>
+          <style>@page { size: ${variant === 'mobile' ? 'A5 portrait' : 'A4 landscape'}; margin: ${variant === 'mobile' ? '0' : '10mm'}; }</style>
         </head>
         <body>${html}</body>
       </html>`, { waitUntil: 'load' });
@@ -151,8 +154,8 @@ export default async function handler(request: ApiRequest, response: ServerRespo
     await page.evaluate(() => document.fonts.ready);
 
     const pdf = await page.pdf({
-      format: 'A4',
-      landscape: true,
+      format: variant === 'mobile' ? 'A5' : 'A4',
+      landscape: variant === 'desktop',
       printBackground: true,
       preferCSSPageSize: true,
       displayHeaderFooter: false,
