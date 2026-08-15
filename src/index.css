@@ -429,7 +429,8 @@
   gap: 3mm;
 }
 
-.weekly-operational-highlights > div {
+.weekly-operational-highlights > div,
+.weekly-operational-highlights > a {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -439,6 +440,7 @@
   border-right: 1.3mm solid #047857;
   border-radius: 2mm;
   background: #f8fafc;
+  text-decoration: none;
 }
 
 .weekly-operational-highlights span {
@@ -451,6 +453,25 @@
   color: #064e3b;
   font-size: 16pt;
   font-weight: 800;
+}
+
+.weekly-operational-highlight-link {
+  border-right-color: #d97706 !important;
+  background: #fff7ed !important;
+}
+
+.weekly-operational-highlight-link span,
+.weekly-operational-highlight-link strong {
+  color: #9a3412;
+}
+
+.weekly-operational-highlight-link small {
+  display: block;
+  margin-top: 1mm;
+  color: #0369a1;
+  font-size: 7pt;
+  font-weight: 800;
+  text-decoration: underline;
 }
 
 .weekly-matrix-section {
@@ -770,6 +791,117 @@
   font-weight: 800;
 }
 
+.weekly-color-index-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8mm;
+  padding-bottom: 4mm;
+  border-bottom: 2px solid #064e3b;
+}
+
+.weekly-color-index-header h1 {
+  margin: 0.5mm 0 0;
+  color: #0f172a;
+  font-size: 22pt;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.weekly-color-index-header p:last-child {
+  margin: 2mm 0 0;
+  color: #64748b;
+  font-size: 9pt;
+  font-weight: 700;
+}
+
+.weekly-color-index-header > a {
+  flex: 0 0 auto;
+  margin-top: 2mm;
+  color: #0369a1;
+  font-size: 8.5pt;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.weekly-color-index-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 3.5mm 5mm;
+  margin-top: 4mm;
+}
+
+.weekly-color-index-group {
+  min-width: 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.weekly-color-index-group > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3mm;
+  padding: 1.8mm 2.5mm;
+  border-radius: 2mm 2mm 0 0;
+  background: #ecfdf5;
+}
+
+.weekly-color-index-group > header strong {
+  color: #064e3b;
+  font-size: 9.5pt;
+  font-weight: 900;
+}
+
+.weekly-color-index-group > header span {
+  color: #047857;
+  font-size: 7.5pt;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.weekly-color-index-group ol {
+  display: grid;
+  gap: 1.2mm;
+  margin: 1.5mm 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weekly-color-index-group li {
+  min-width: 0;
+}
+
+.weekly-color-index-group li > a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 3mm;
+  min-height: 8mm;
+  padding: 1.3mm 2.5mm;
+  border: 1px solid #fed7aa;
+  border-right: 1.2mm solid #d97706;
+  border-radius: 1.5mm;
+  background: #fffaf5;
+  text-decoration: none;
+}
+
+.weekly-color-index-group li strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-size: 8.8pt;
+  font-weight: 900;
+}
+
+.weekly-color-index-group li span {
+  color: #475569;
+  font-size: 7.8pt;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .weekly-print-document-mobile {
   overflow-x: visible;
 }
@@ -845,13 +977,15 @@
   margin-top: 5mm;
 }
 
-.weekly-mobile-kpis > div {
+.weekly-mobile-kpis > div,
+.weekly-mobile-kpis > a {
   display: grid;
   gap: 1mm;
   padding: 4mm;
   border: 1px solid #dbe5df;
   border-radius: 3mm;
   background: #f7faf8;
+  text-decoration: none;
 }
 
 .weekly-mobile-kpis strong {
@@ -875,6 +1009,48 @@
 .weekly-mobile-kpis > .weekly-mobile-kpi-color strong,
 .weekly-mobile-kpis > .weekly-mobile-kpi-color span {
   color: #9a3412;
+}
+
+.weekly-mobile-kpis > .weekly-mobile-kpi-color small {
+  color: #0369a1;
+  font-size: 8.5pt;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.weekly-color-index-page-mobile .weekly-color-index-header {
+  gap: 4mm;
+  padding-bottom: 3mm;
+}
+
+.weekly-color-index-page-mobile .weekly-color-index-header h1 {
+  font-size: 19pt;
+}
+
+.weekly-color-index-page-mobile .weekly-color-index-header p:last-child {
+  font-size: 8.5pt;
+}
+
+.weekly-color-index-page-mobile .weekly-color-index-header > a {
+  font-size: 8pt;
+}
+
+.weekly-color-index-page-mobile .weekly-color-index-groups {
+  grid-template-columns: 1fr;
+  gap: 3mm;
+}
+
+.weekly-color-index-page-mobile .weekly-color-index-group li > a {
+  min-height: 9mm;
+  padding: 1.8mm 2.5mm;
+}
+
+.weekly-color-index-page-mobile .weekly-color-index-group li strong {
+  font-size: 10pt;
+}
+
+.weekly-color-index-page-mobile .weekly-color-index-group li span {
+  font-size: 8.5pt;
 }
 
 .weekly-mobile-days,

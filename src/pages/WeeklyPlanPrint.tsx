@@ -159,6 +159,18 @@ function dayAnchorId(value: string): string {
   return `workday-${value.replace(/[^0-9]+/g, '-')}`;
 }
 
+function colorCheckAnchorId(item: PlanItem): string {
+  return `color-check-${item.id.replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
+}
+
+function chunkItems<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
 function formatHebrewPeriod(dates: string[]): string {
   if (dates.length === 0) return 'ללא תאריכים';
 
@@ -263,7 +275,11 @@ function MobilePlanGroup({
         {group.items.map((item, index) => {
           const sampleCount = plannedSampleCount(item);
           return (
-            <article key={item.id} className={`weekly-mobile-card${requiresColorCheck(item) ? ' weekly-mobile-card-color' : ''}`}>
+            <article
+              key={item.id}
+              id={requiresColorCheck(item) ? colorCheckAnchorId(item) : undefined}
+              className={`weekly-mobile-card${requiresColorCheck(item) ? ' weekly-mobile-card-color' : ''}`}
+            >
               <div className="weekly-mobile-card-heading">
                 <span>{index + 1}</span>
                 <div>
@@ -298,6 +314,7 @@ function DetailPageContents({
   reportPageNumber,
   reportPageCount,
   isDayStart,
+  enableColorAnchors,
 }: {
   group: DetailPage;
   periodLabel: string;
@@ -305,6 +322,7 @@ function DetailPageContents({
   reportPageNumber: number;
   reportPageCount: number;
   isDayStart: boolean;
+  enableColorAnchors: boolean;
 }) {
   const showNotes = group.items.some((item) => item.coordinatorNote?.trim());
   const hasColorChecks = group.allItems.some(requiresColorCheck);
@@ -358,7 +376,11 @@ function DetailPageContents({
             const hasColorCheck = requiresColorCheck(item);
 
             return (
-              <tr key={item.id} className={hasColorCheck ? 'weekly-color-row' : undefined}>
+              <tr
+                key={item.id}
+                id={enableColorAnchors && hasColorCheck ? colorCheckAnchorId(item) : undefined}
+                className={hasColorCheck ? 'weekly-color-row' : undefined}
+              >
                 <td className="weekly-row-index">{group.startIndex + index + 1}</td>
                 <td>
                   <strong>{item.plotName}</strong>
@@ -385,6 +407,78 @@ function DetailPageContents({
 
       <PageFooter generatedAt={generatedAt} pageNumber={reportPageNumber} pageCount={reportPageCount} />
     </>
+  );
+}
+
+function ColorCheckIndexPage({
+  items,
+  variant,
+  generatedAt,
+  pageNumber,
+  pageCount,
+  indexPageNumber,
+  indexPageCount,
+}: {
+  items: PlanItem[];
+  variant: ReportVariant;
+  generatedAt: Date;
+  pageNumber: number;
+  pageCount: number;
+  indexPageNumber: number;
+  indexPageCount: number;
+}) {
+  const groupedItems = items.reduce<Array<{ date: string; items: PlanItem[] }>>((groups, item) => {
+    const currentGroup = groups.at(-1);
+    if (currentGroup?.date === item.date) currentGroup.items.push(item);
+    else groups.push({ date: item.date, items: [item] });
+    return groups;
+  }, []);
+  const isFirstIndexPage = indexPageNumber === 1;
+  const pageClass = variant === 'desktop'
+    ? 'weekly-print-page weekly-color-index-page'
+    : 'weekly-mobile-page weekly-color-index-page weekly-color-index-page-mobile';
+
+  return (
+    <section id={isFirstIndexPage ? 'color-check-index' : undefined} className={pageClass}>
+      <header className="weekly-color-index-header">
+        <div>
+          <p className="weekly-print-eyebrow">MAGOF PLANNER</p>
+          <h1>רשימת בדיקות צבע</h1>
+          <p>
+            לחצו על חלקה כדי לעבור ישירות לשורת העבודה שלה
+            {indexPageCount > 1 && ` • עמוד ${indexPageNumber} מתוך ${indexPageCount}`}
+          </p>
+        </div>
+        <a href="#report-summary">חזרה לסיכום</a>
+      </header>
+
+      <ColorSamplingNotice compact />
+
+      <div className="weekly-color-index-groups">
+        {groupedItems.map((group) => (
+          <section key={`${group.date}-${group.items[0]?.id}`} className="weekly-color-index-group">
+            <header>
+              <strong>{formatHebrewDate(group.date)}</strong>
+              <span>{group.items.length} בדיקות בעמוד זה</span>
+            </header>
+            <ol>
+              {group.items.map((item) => (
+                <li key={item.id}>
+                  <a href={`#${colorCheckAnchorId(item)}`}>
+                    <strong>{item.plotName}</strong>
+                    <span>{item.plotCode || 'ללא קוד'} • צוות {teamName(item)}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+
+      {variant === 'desktop'
+        ? <PageFooter generatedAt={generatedAt} pageNumber={pageNumber} pageCount={pageCount} />
+        : <MobileFooter generatedAt={generatedAt} />}
+    </section>
   );
 }
 
@@ -434,6 +528,13 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
     });
     return groups;
   }, [visibleDates, visibleItems, visibleTeams]);
+
+  const colorCheckItems = useMemo(() => (
+    detailGroups.flatMap((group) => group.items.filter(requiresColorCheck))
+  ), [detailGroups]);
+  const colorCheckPages = useMemo(() => (
+    chunkItems(colorCheckItems, reportVariant === 'desktop' ? 14 : 10)
+  ), [colorCheckItems, reportVariant]);
 
   useLayoutEffect(() => {
     const measurementRoot = paginationMeasureRef.current;
@@ -493,13 +594,13 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
     ? `תוכנית עבודה - צוות ${reportRegion}`
     : `תוכנית עבודה - ${reportRegion}`;
   const repeatedSamplePoints = visibleItems.filter((item) => (plannedSampleCount(item) ?? 0) > 1).length;
-  const colorCheckPoints = visibleItems.filter(requiresColorCheck).length;
+  const colorCheckPoints = colorCheckItems.length;
   const averagePointsPerDay = visibleDates.length > 0 ? visibleItems.length / visibleDates.length : 0;
   const busiestDate = visibleDates.reduce((busiest, date) => {
     const count = visibleItems.filter((item) => item.date === date).length;
     return count > busiest.count ? { date, count } : busiest;
   }, { date: '', count: 0 });
-  const totalPages = detailPages.length + 1;
+  const totalPages = detailPages.length + colorCheckPages.length + 1;
 
   const handleDownload = async () => {
     if (!documentRef.current || visibleItems.length === 0 || exportState === 'generating') return;
@@ -681,7 +782,14 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                 </div>
                 <div className="weekly-operational-highlights">
                   <div><span>נקודות עם יותר מדגימה אחת</span><strong>{repeatedSamplePoints}</strong></div>
-                  <div><span>נקודות עם בדיקת צבע</span><strong>{colorCheckPoints}</strong></div>
+                  {colorCheckPoints > 0 ? (
+                    <a className="weekly-operational-highlight-link" href="#color-check-index">
+                      <span>נקודות עם בדיקת צבע<small>מעבר לרשימה</small></span>
+                      <strong>{colorCheckPoints}</strong>
+                    </a>
+                  ) : (
+                    <div><span>נקודות עם בדיקת צבע</span><strong>0</strong></div>
+                  )}
                   <div><span>ימי עבודה</span><strong>{visibleDates.length}</strong></div>
                   <div><span>צוותים בדוח</span><strong>{visibleTeams.length}</strong></div>
                 </div>
@@ -705,6 +813,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                   reportPageNumber={1}
                   reportPageCount={1}
                   isDayStart={groupIndex === 0 || detailGroups[groupIndex - 1]?.date !== group.date}
+                  enableColorAnchors={false}
                 />
               </section>
             ))}
@@ -725,10 +834,23 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                 reportPageNumber={detailPageIndex + 2}
                 reportPageCount={totalPages}
                 isDayStart={isDayStart}
+                enableColorAnchors
               />
             </section>
             );
           })}
+          {colorCheckPages.map((items, index) => (
+            <ColorCheckIndexPage
+              key={`desktop-color-index-${index}`}
+              items={items}
+              variant="desktop"
+              generatedAt={generatedAt}
+              pageNumber={detailPages.length + index + 2}
+              pageCount={totalPages}
+              indexPageNumber={index + 1}
+              indexPageCount={colorCheckPages.length}
+            />
+          ))}
           </>
           ) : (
           <>
@@ -747,9 +869,9 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                 <div><strong>{samplesFor(visibleItems)}</strong><span>דגימות</span></div>
                 <div><strong>{visibleDates.length}</strong><span>ימי עבודה</span></div>
                 {colorCheckPoints > 0 && (
-                  <div className="weekly-mobile-kpi-color">
-                    <strong>{colorCheckPoints}</strong><span>בדיקות צבע</span>
-                  </div>
+                  <a className="weekly-mobile-kpi-color" href="#color-check-index">
+                    <strong>{colorCheckPoints}</strong><span>בדיקות צבע</span><small>מעבר לרשימה</small>
+                  </a>
                 )}
               </div>
 
@@ -787,6 +909,18 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                 group={group}
                 generatedAt={generatedAt}
                 isDayStart={groupIndex === 0 || detailGroups[groupIndex - 1]?.date !== group.date}
+              />
+            ))}
+            {colorCheckPages.map((items, index) => (
+              <ColorCheckIndexPage
+                key={`mobile-color-index-${index}`}
+                items={items}
+                variant="mobile"
+                generatedAt={generatedAt}
+                pageNumber={index + 1}
+                pageCount={colorCheckPages.length}
+                indexPageNumber={index + 1}
+                indexPageCount={colorCheckPages.length}
               />
             ))}
           </>
