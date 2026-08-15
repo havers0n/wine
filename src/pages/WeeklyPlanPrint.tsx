@@ -897,7 +897,6 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
               <section className="weekly-mobile-highlights">
                 <h2>דגשים לביצוע</h2>
                 <div><span>נקודות עם יותר מדגימה אחת</span><strong>{repeatedSamplePoints}</strong></div>
-                <div><span>נקודות עם בדיקת צבע</span><strong>{colorCheckPoints}</strong></div>
               </section>
 
               <MobileFooter generatedAt={generatedAt} />
