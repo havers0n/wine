@@ -155,6 +155,10 @@ function formatHebrewDate(value: string): string {
   }).format(date);
 }
 
+function dayAnchorId(value: string): string {
+  return `workday-${value.replace(/[^0-9]+/g, '-')}`;
+}
+
 function formatHebrewPeriod(dates: string[]): string {
   if (dates.length === 0) return 'ללא תאריכים';
 
@@ -206,9 +210,44 @@ function MobileFooter({ generatedAt }: { generatedAt: Date }) {
   return <footer className="weekly-mobile-footer">MAGOF Planner • הופק בתאריך {generationTime(generatedAt)}</footer>;
 }
 
-function MobilePlanGroup({ group, generatedAt }: { group: DetailGroup; generatedAt: Date }) {
+function ColorSamplingNotice({ compact = false }: { compact?: boolean }) {
   return (
-    <section className="weekly-mobile-page weekly-mobile-group">
+    <aside className={`weekly-color-notice${compact ? ' weekly-color-notice-compact' : ''}`}>
+      <strong>בדיקת צבע - חובה</strong>
+      <span>בכל חלקה המסומנת: למלא כוס בענבים עד הסוף ולדגום גם אם לא יוצאת מדבקה במדפסת.</span>
+    </aside>
+  );
+}
+
+function DayBoundary({ date }: { date: string }) {
+  return (
+    <div className="weekly-day-boundary">
+      <div>
+        <span>תחילת יום עבודה חדש</span>
+        <strong>{formatHebrewDate(date)}</strong>
+      </div>
+      <a href="#report-summary">חזרה לסיכום</a>
+    </div>
+  );
+}
+
+function MobilePlanGroup({
+  group,
+  generatedAt,
+  isDayStart,
+}: {
+  group: DetailGroup;
+  generatedAt: Date;
+  isDayStart: boolean;
+}) {
+  const hasColorChecks = group.items.some(requiresColorCheck);
+
+  return (
+    <section
+      id={isDayStart ? dayAnchorId(group.date) : undefined}
+      className={`weekly-mobile-page weekly-mobile-group${isDayStart ? ' weekly-day-start' : ''}`}
+    >
+      {isDayStart && <DayBoundary date={group.date} />}
       <header className="weekly-mobile-group-header">
         <div>
           <p className="weekly-print-eyebrow">צוות {group.team}</p>
@@ -218,11 +257,13 @@ function MobilePlanGroup({ group, generatedAt }: { group: DetailGroup; generated
         <PrintLogo />
       </header>
 
+      {hasColorChecks && <ColorSamplingNotice compact />}
+
       <div className="weekly-mobile-cards">
         {group.items.map((item, index) => {
           const sampleCount = plannedSampleCount(item);
           return (
-            <article key={item.id} className="weekly-mobile-card">
+            <article key={item.id} className={`weekly-mobile-card${requiresColorCheck(item) ? ' weekly-mobile-card-color' : ''}`}>
               <div className="weekly-mobile-card-heading">
                 <span>{index + 1}</span>
                 <div>
@@ -237,7 +278,7 @@ function MobilePlanGroup({ group, generatedAt }: { group: DetailGroup; generated
                 <div><dt>דגימות</dt><dd>{sampleCount ?? (item.plannedSamples || '—')}</dd></div>
               </dl>
               <div className="weekly-mobile-card-flags">
-                {requiresColorCheck(item) && <span>בדיקת צבע</span>}
+                {requiresColorCheck(item) && <span>בדיקת צבע • כוס מלאה עד הסוף</span>}
                 {item.coordinatorNote?.trim() && <p><strong>הערה:</strong> {item.coordinatorNote}</p>}
               </div>
             </article>
@@ -256,17 +297,21 @@ function DetailPageContents({
   generatedAt,
   reportPageNumber,
   reportPageCount,
+  isDayStart,
 }: {
   group: DetailPage;
   periodLabel: string;
   generatedAt: Date;
   reportPageNumber: number;
   reportPageCount: number;
+  isDayStart: boolean;
 }) {
   const showNotes = group.items.some((item) => item.coordinatorNote?.trim());
+  const hasColorChecks = group.allItems.some(requiresColorCheck);
 
   return (
     <>
+      {isDayStart && group.pageNumber === 1 && <DayBoundary date={group.date} />}
       <header className="weekly-detail-header">
         <div>
           <p className="weekly-print-eyebrow">MAGOF PLANNER</p>
@@ -292,6 +337,8 @@ function DetailPageContents({
         </dl>
       </section>
 
+      {hasColorChecks && <ColorSamplingNotice compact />}
+
       <table className="weekly-detail-table">
         <thead>
           <tr>
@@ -311,7 +358,7 @@ function DetailPageContents({
             const hasColorCheck = requiresColorCheck(item);
 
             return (
-              <tr key={item.id}>
+              <tr key={item.id} className={hasColorCheck ? 'weekly-color-row' : undefined}>
                 <td className="weekly-row-index">{group.startIndex + index + 1}</td>
                 <td>
                   <strong>{item.plotName}</strong>
@@ -322,7 +369,7 @@ function DetailPageContents({
                 <td>{item.variety || '—'}</td>
                 <td className="weekly-samples-cell">
                   <div className="weekly-row-flags">
-                    {hasColorCheck && <span className="weekly-color-check-badge">בדיקת צבע</span>}
+                    {hasColorCheck && <span className="weekly-color-check-badge">צבע: כוס מלאה</span>}
                     {hasColorCheck && hasMultipleSamples && <span className="weekly-row-flag-separator">·</span>}
                     <span className={hasMultipleSamples ? 'weekly-sample-value weekly-sample-value-emphasized' : 'weekly-sample-value'}>
                       {sampleCount ?? (item.plannedSamples || '—')}
@@ -580,7 +627,7 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
         <div ref={documentRef} className={`weekly-print-document weekly-print-document-${reportVariant}`}>
           {reportVariant === 'desktop' ? (
           <>
-          <section className="weekly-print-page weekly-summary-page">
+          <section id="report-summary" className="weekly-print-page weekly-summary-page">
             <header className="weekly-summary-header">
               <div>
                 <p className="weekly-print-eyebrow">MAGOF PLANNER</p>
@@ -603,6 +650,8 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
               </div>
             )}
 
+            {colorCheckPoints > 0 && <ColorSamplingNotice />}
+
             <div className="weekly-summary-columns">
               <section>
                 <div className="weekly-section-title">
@@ -614,7 +663,9 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                     const count = visibleItems.filter((item) => item.date === date).length;
                     return (
                       <div key={date} className="weekly-day-bar-row">
-                        <span>{formatHebrewPeriod([date])}</span>
+                        <a className="weekly-day-link" href={`#${dayAnchorId(date)}`}>
+                          {formatHebrewPeriod([date])} <small>• מעבר ליום</small>
+                        </a>
                         <div><i style={{ width: `${Math.max(6, (count / maxDayItems) * 100)}%` }} /></div>
                         <strong>{count}</strong>
                       </div>
@@ -653,26 +704,35 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                   generatedAt={generatedAt}
                   reportPageNumber={1}
                   reportPageCount={1}
+                  isDayStart={groupIndex === 0 || detailGroups[groupIndex - 1]?.date !== group.date}
                 />
               </section>
             ))}
           </div>
 
-          {detailPages.map((group, detailPageIndex) => (
-            <section key={`${group.date}-${group.team}-${group.pageNumber}`} className="weekly-print-page weekly-detail-page">
+          {detailPages.map((group, detailPageIndex) => {
+            const isDayStart = detailPageIndex === 0 || detailPages[detailPageIndex - 1]?.date !== group.date;
+            return (
+            <section
+              key={`${group.date}-${group.team}-${group.pageNumber}`}
+              id={isDayStart ? dayAnchorId(group.date) : undefined}
+              className={`weekly-print-page weekly-detail-page${isDayStart ? ' weekly-day-start' : ''}`}
+            >
               <DetailPageContents
                 group={group}
                 periodLabel={periodLabel}
                 generatedAt={generatedAt}
                 reportPageNumber={detailPageIndex + 2}
                 reportPageCount={totalPages}
+                isDayStart={isDayStart}
               />
             </section>
-          ))}
+            );
+          })}
           </>
           ) : (
           <>
-            <section className="weekly-mobile-page weekly-mobile-summary-page">
+            <section id="report-summary" className="weekly-mobile-page weekly-mobile-summary-page">
               <header className="weekly-mobile-summary-header">
                 <div>
                   <p className="weekly-print-eyebrow">MAGOF PLANNER</p>
@@ -692,13 +752,15 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                 <div className="weekly-unassigned-warning"><strong>{unassignedCount}</strong> נקודות ללא שיוך לצוות</div>
               )}
 
+              {colorCheckPoints > 0 && <ColorSamplingNotice />}
+
               <section className="weekly-mobile-days">
                 <h2>חלוקת העבודה לפי ימים</h2>
                 {visibleDates.map((date) => {
                   const dayItems = visibleItems.filter((item) => item.date === date);
                   return (
                     <div key={date}>
-                      <span>{formatHebrewDate(date)}</span>
+                      <a className="weekly-day-link" href={`#${dayAnchorId(date)}`}>{formatHebrewDate(date)}</a>
                       <strong>{dayItems.length} נקודות • {samplesFor(dayItems)} דגימות</strong>
                     </div>
                   );
@@ -714,8 +776,13 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
               <MobileFooter generatedAt={generatedAt} />
             </section>
 
-            {detailGroups.map((group) => (
-              <MobilePlanGroup key={`${group.date}-${group.team}`} group={group} generatedAt={generatedAt} />
+            {detailGroups.map((group, groupIndex) => (
+              <MobilePlanGroup
+                key={`${group.date}-${group.team}`}
+                group={group}
+                generatedAt={generatedAt}
+                isDayStart={groupIndex === 0 || detailGroups[groupIndex - 1]?.date !== group.date}
+              />
             ))}
           </>
           )}

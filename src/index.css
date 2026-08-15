@@ -299,6 +299,43 @@
   font-weight: 700;
 }
 
+.weekly-color-notice {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 3mm;
+  margin-top: 3mm;
+  padding: 3mm 4mm;
+  border: 1px solid #f59e0b;
+  border-right: 2mm solid #d97706;
+  border-radius: 2.5mm;
+  background: #fff7ed;
+  color: #78350f;
+}
+
+.weekly-color-notice strong {
+  color: #9a3412;
+  font-size: 10pt;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.weekly-color-notice span {
+  font-size: 9pt;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.weekly-color-notice-compact {
+  margin-top: 2.5mm;
+  padding: 2mm 3mm;
+}
+
+.weekly-color-notice-compact strong,
+.weekly-color-notice-compact span {
+  font-size: 8.5pt;
+}
+
 .weekly-summary-columns {
   display: grid;
   grid-template-columns: 1.35fr 1fr;
@@ -344,12 +381,27 @@
 
 .weekly-day-bar-row {
   display: grid;
-  grid-template-columns: 39mm 1fr 9mm;
+  grid-template-columns: 49mm 1fr 9mm;
   align-items: center;
   gap: 2mm;
   color: #475569;
   font-size: 8pt;
   font-weight: 700;
+}
+
+.weekly-day-link {
+  color: #0369a1;
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 0.35mm;
+  text-underline-offset: 0.6mm;
+}
+
+.weekly-day-link small {
+  color: #64748b;
+  font-size: 7pt;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .weekly-day-bar-row > div {
@@ -442,6 +494,44 @@
 
 .weekly-detail-header h1 {
   font-size: 17pt;
+}
+
+.weekly-day-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5mm;
+  margin-bottom: 3mm;
+  padding: 2.2mm 4mm;
+  border-top: 2mm solid #047857;
+  border-bottom: 1px solid #a7f3d0;
+  border-radius: 1.5mm 1.5mm 0 0;
+  background: #ecfdf5;
+}
+
+.weekly-day-boundary > div {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+}
+
+.weekly-day-boundary span {
+  color: #047857;
+  font-size: 8.5pt;
+  font-weight: 900;
+}
+
+.weekly-day-boundary strong {
+  color: #064e3b;
+  font-size: 13pt;
+  font-weight: 900;
+}
+
+.weekly-day-boundary a {
+  color: #0369a1;
+  font-size: 8pt;
+  font-weight: 800;
+  text-decoration: underline;
 }
 
 .weekly-detail-header .weekly-print-period {
@@ -548,6 +638,16 @@
   background: #f8fafc;
 }
 
+.weekly-detail-table tbody tr.weekly-color-row td {
+  border-top-color: #f59e0b;
+  border-bottom-color: #f59e0b;
+  background: #fff7ed !important;
+}
+
+.weekly-detail-table tbody tr.weekly-color-row td:first-child {
+  box-shadow: inset -1.2mm 0 #d97706;
+}
+
 .weekly-detail-table td strong {
   color: #0f172a;
   font-weight: 800;
@@ -630,8 +730,8 @@
   padding: 0.8mm 1.5mm;
   border: 1px solid;
   border-radius: 2mm;
-  font-size: 7.5pt;
-  font-weight: 800;
+  font-size: 7.2pt;
+  font-weight: 900;
   line-height: 1;
 }
 
@@ -793,6 +893,10 @@
   font-weight: 800;
 }
 
+.weekly-mobile-days .weekly-day-link {
+  font-size: 10.5pt;
+}
+
 .weekly-mobile-group {
   min-height: 0;
 }
@@ -811,6 +915,16 @@
   background: #fbfdfc;
   break-inside: avoid;
   page-break-inside: avoid;
+}
+
+.weekly-mobile-card.weekly-mobile-card-color {
+  border-color: #f59e0b;
+  border-right-color: #d97706;
+  background: #fff7ed;
+}
+
+.weekly-mobile-card.weekly-mobile-card-color .weekly-mobile-card-heading > span {
+  background: #d97706;
 }
 
 .weekly-mobile-card-heading {
@@ -887,7 +1001,25 @@
   background: #fffbeb;
   color: #92400e;
   font-size: 9pt;
-  font-weight: 800;
+  font-weight: 900;
+}
+
+.weekly-mobile-page .weekly-day-boundary {
+  margin-bottom: 4mm;
+  padding: 2.5mm 3mm;
+}
+
+.weekly-mobile-page .weekly-day-boundary > div {
+  display: grid;
+  gap: 0.5mm;
+}
+
+.weekly-mobile-page .weekly-day-boundary strong {
+  font-size: 11.5pt;
+}
+
+.weekly-mobile-page .weekly-day-boundary a {
+  font-size: 8.5pt;
 }
 
 .weekly-mobile-card-flags p {
