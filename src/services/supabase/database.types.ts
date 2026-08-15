@@ -98,6 +98,7 @@ export type Database = {
           work_date: string;
           team: string;
           planned_samples: number;
+          color: string;
           coordinator_note: string | null;
           status: string;
           created_at: string;
@@ -110,6 +111,7 @@ export type Database = {
           work_date: string;
           team?: string;
           planned_samples?: number;
+          color?: string;
           coordinator_note?: string | null;
           status?: string;
           created_at?: string;
@@ -120,6 +122,7 @@ export type Database = {
           plot_catalog_id?: number;
           team?: string;
           planned_samples?: number;
+          color?: string;
           coordinator_note?: string | null;
           status?: string;
           updated_at?: string;

@@ -132,6 +132,7 @@ function toInsert(workPlanId: number, plotCatalogId: number, item: PlanItem): Pl
     work_date: toDatabaseDate(item.date),
     team: item.team,
     planned_samples: plannedSamples(item.plannedSamples),
+    color: item.color.trim(),
     coordinator_note: item.coordinatorNote ?? null,
     status: item.status,
   };
@@ -173,7 +174,7 @@ function fromRow(row: PlanItemWithCatalogRow): PlanItem {
     plannedSamples: String(row.planned_samples),
     sector: catalog.sector,
     sampleType: catalog.sampleType,
-    color: '',
+    color: row.color,
     coordinatorNote: row.coordinator_note ?? undefined,
     status: assertItemStatus(row.status),
   };
@@ -348,6 +349,7 @@ export async function listPlanItems(): Promise<PlanItem[]> {
       work_date,
       team,
       planned_samples,
+      color,
       coordinator_note,
       status,
       plot_catalog!inner (
