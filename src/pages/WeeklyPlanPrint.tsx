@@ -68,7 +68,8 @@ function samplesFor(items: PlanItem[]): number {
 }
 
 function requiresColorCheck(item: PlanItem): boolean {
-  return item.color.trim() === 'כן';
+  const value = item.color.trim();
+  return value === 'כן' || value === 'צבע';
 }
 
 function plannedSampleCount(item: PlanItem): number | null {
