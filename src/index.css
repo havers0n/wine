@@ -832,6 +832,12 @@
   border-radius: 3mm;
 }
 
+.weekly-mobile-group-header .weekly-print-logo {
+  width: 13mm;
+  height: 13mm;
+  border-radius: 2.2mm;
+}
+
 .weekly-mobile-kpis {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -859,6 +865,16 @@
   color: #475569;
   font-size: 11pt;
   font-weight: 700;
+}
+
+.weekly-mobile-kpis > .weekly-mobile-kpi-color {
+  border-color: #f59e0b;
+  background: #fff7ed;
+}
+
+.weekly-mobile-kpis > .weekly-mobile-kpi-color strong,
+.weekly-mobile-kpis > .weekly-mobile-kpi-color span {
+  color: #9a3412;
 }
 
 .weekly-mobile-days,

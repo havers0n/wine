@@ -250,8 +250,8 @@ function MobilePlanGroup({
       {isDayStart && <DayBoundary date={group.date} />}
       <header className="weekly-mobile-group-header">
         <div>
-          <p className="weekly-print-eyebrow">צוות {group.team}</p>
-          <h1>{formatHebrewDate(group.date)}</h1>
+          <p className="weekly-print-eyebrow">צוות עבודה</p>
+          <h1>צוות {group.team}</h1>
           <p>{group.items.length} נקודות • {samplesFor(group.items)} דגימות</p>
         </div>
         <PrintLogo />
@@ -746,6 +746,11 @@ export default function WeeklyPlanPrint({ onBack }: WeeklyPlanPrintProps) {
                 <div><strong>{visibleItems.length}</strong><span>נקודות עבודה</span></div>
                 <div><strong>{samplesFor(visibleItems)}</strong><span>דגימות</span></div>
                 <div><strong>{visibleDates.length}</strong><span>ימי עבודה</span></div>
+                {colorCheckPoints > 0 && (
+                  <div className="weekly-mobile-kpi-color">
+                    <strong>{colorCheckPoints}</strong><span>בדיקות צבע</span>
+                  </div>
+                )}
               </div>
 
               {unassignedCount > 0 && (
